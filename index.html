@@ -1,0 +1,1103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Wizards & Warriors 3D</title>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden;background:#07140c;color:white;font-family:Georgia,"Times New Roman",serif}
+canvas{display:block;width:100vw;height:100vh}
+#ui{position:fixed;inset:0;pointer-events:none}
+.menu{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:auto;background:linear-gradient(145deg,#07140c,#163b22 42%,#2e2111 78%,#080b07)}
+.card{width:min(980px,94vw);max-height:94vh;overflow:auto;text-align:center;padding:28px;border:4px ridge #d8b45a;border-radius:18px;background:#102413f2}
+h1{margin:0 0 8px;font-size:clamp(44px,8vw,86px);line-height:.9;letter-spacing:2px;color:#f5d889}
+.subtitle{margin-bottom:18px;color:#e7d9b7;font:18px Georgia}
+.fighters{display:grid;grid-template-columns:repeat(4,minmax(150px,1fr));gap:12px;margin:16px 0}
+.fighter{border:2px solid #d8b45a77;border-radius:12px;padding:12px;background:#23452bcc;cursor:pointer;text-align:left;position:relative}
+.fighter:hover,.fighter.sel{transform:translateY(-3px);border-color:#fff0a8;outline:3px solid #7ad08c}
+.swatch{height:64px;border-radius:8px;border:2px solid #d8b45a88;margin-bottom:8px}
+.fighter b{display:block;color:#fff2a6;font-size:17px}
+.fighter span{display:block;color:#ddd;font:12px Arial;margin-top:4px;text-transform:none}
+button{border:2px solid #fff0b6;border-radius:12px;padding:16px 28px;margin:8px;font-size:22px;font-weight:900;cursor:pointer;color:#1d1308;background:linear-gradient(#fff0b6,#c88a2a);font-family:Georgia,"Times New Roman",serif;text-transform:uppercase;letter-spacing:1px}
+button:active{transform:translateY(3px)}
+.row{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin:8px}
+.diff.sel{outline:4px solid #7ad08c}
+.controls{display:none;margin:14px auto 0;grid-template-columns:repeat(2,1fr);gap:10px;text-align:left;max-width:760px;font:14px Arial}
+.controls.show{display:grid}
+.controls div{background:#ffffff14;border:1px solid #ffffff24;padding:10px;border-radius:8px}
+#hud{position:absolute;left:18px;right:18px;top:14px;display:none;gap:12px;align-items:center}
+.stack{flex:1}
+.barwrap{height:28px;border:3px solid white;background:#2b1622;border-radius:10px;overflow:hidden}
+.superwrap{height:12px;margin-top:7px;border:2px solid #d8b45a;background:#050008;border-radius:6px;overflow:hidden}
+.stamwrap{height:8px;margin-top:5px;border:2px solid #7ad08c;background:#050008;border-radius:6px;overflow:hidden}
+.bar{height:100%;width:100%;background:linear-gradient(90deg,#3bd46d,#d7ff7a)}
+.super{height:100%;width:0;background:linear-gradient(90deg,#7ad08c,#f5d889,#fff2b6)}
+.stam{height:100%;width:100%;background:linear-gradient(90deg,#38d876,#d8ff7a)}
+#timer{min-width:72px;text-align:center;font-size:30px;font-weight:900;color:#f8d96a}
+.labels{position:absolute;top:50px;left:20px;right:20px;display:none;justify-content:space-between;font-weight:900;color:#f5d889}
+.pop{position:absolute;left:50%;top:88px;transform:translateX(-50%);display:none;color:#fff2a6;font-size:24px}
+.msg{position:absolute;inset:0;display:none;align-items:center;justify-content:center;text-align:center;font-size:clamp(38px,8vw,88px);font-weight:900;color:#f8d96a;background:#0008;pointer-events:auto}
+@media(max-width:760px){.fighters{grid-template-columns:repeat(2,1fr)}.controls{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="ui">
+  <div id="menu" class="menu"><div class="card">
+    <h1>Wizards<br>& Warriors 3D</h1>
+    <div class="subtitle">Pick your fighter. Fight the CPU.</div>
+    <div id="fighters" class="fighters"></div>
+    <button id="playBtn">PLAY</button><button id="controlsBtn">CONTROLS</button>
+    <div class="row"><button class="diff" data-d="easy">EASY</button><button class="diff sel" data-d="normal">NORMAL</button><button class="diff" data-d="hard">HARD</button><button class="diff" data-d="nightmare">NIGHTMARE</button></div>
+    <div id="how" class="controls">
+      <div><b>Arrow Keys / WASD</b><br>Move / jump</div>
+      <div><b>Z</b><br>Block</div>
+      <div><b>V</b><br>Quick attack</div>
+      <div><b>X</b><br>Heavy attack</div>
+      <div><b>Esc</b><br>Return to menu</div>
+      <div><b>P</b><br>Pause</div>
+    </div>
+  </div></div>
+  <div id="hud">
+    <div class="stack">
+      <div class="barwrap"><div id="p1bar" class="bar"></div></div>
+      <div class="superwrap"><div id="p1sup" class="super"></div></div>
+      <div class="stamwrap"><div id="p1sta" class="stam"></div></div>
+    </div>
+    <div id="timer">90</div>
+    <div class="stack">
+      <div class="barwrap"><div id="p2bar" class="bar"></div></div>
+      <div class="superwrap"><div id="p2sup" class="super"></div></div>
+      <div class="stamwrap"><div id="p2sta" class="stam"></div></div>
+    </div>
+  </div>
+  <div id="labels" class="labels"><span id="p1name"></span><span id="p2name"></span></div>
+  <div id="pop" class="pop"></div>
+  <div id="msg" class="msg"></div>
+</div>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js"
+  }
+}
+</script>
+<script type="module">
+'use strict';
+import * as THREE from 'three';
+
+// ============================================================================
+// WIZARDS & WARRIORS 3D
+// 2.5D fighter on a fixed combat plane. Three.js renderer. CPU only (v1).
+// ============================================================================
+
+const $ = id => document.getElementById(id);
+
+const els = {
+    menu: $('menu'),
+    hud: $('hud'),
+    labels: $('labels'),
+    fighters: $('fighters'),
+    playBtn: $('playBtn'),
+    controlsBtn: $('controlsBtn'),
+    how: $('how'),
+    p1bar: $('p1bar'), p2bar: $('p2bar'),
+    p1sup: $('p1sup'), p2sup: $('p2sup'),
+    p1sta: $('p1sta'), p2sta: $('p2sta'),
+    timer: $('timer'),
+    p1name: $('p1name'), p2name: $('p2name'),
+    pop: $('pop'),
+    msg: $('msg')
+};
+
+// Character roster — same 20 from the 2D game.
+// [name, title, body color, accent color, weapon, baseHP, speed, kind, atkMod, defMod, spdMod]
+const chars = [
+    ['Aurelian', 'Sun Paladin', '#4aa3ff', '#fff08c', 'sun blade', 120, 240, 'shield', 1.05, 1.35, 0.85],
+    ['Morvane', 'Lord of the Undead', '#67e087', '#b7ffb7', 'skull staff', 98, 225, 'staff', 1.25, 0.9, 0.95],
+    ['Emberlyn', 'Flame Witch', '#ff7043', '#ffd15c', 'flame wand', 90, 285, 'wand', 1.35, 0.75, 1.1],
+    ['Nyx', 'Shadow Duelist', '#8f63ff', '#f3b5ff', 'twin daggers', 84, 335, 'dagger', 1.05, 0.7, 1.45],
+    ['Boreas', 'Frost Giant', '#76d7ff', '#e9fbff', 'ice hammer', 136, 195, 'shield', 0.95, 1.55, 0.65],
+    ['Thornmaw', 'Forest Beast', '#73bf45', '#ffe0a1', 'claws', 116, 270, 'claw', 1.18, 1.15, 1],
+    ['Vaelor', 'Storm Sage', '#58d8ff', '#fff36b', 'lightning rod', 92, 310, 'staff', 1.18, 0.85, 1.25],
+    ['Kairo', 'Rune Samurai', '#ff5d7a', '#f7f7ff', 'rune katana', 104, 300, 'sword', 1.25, 0.95, 1.18],
+    ['Poxley', 'Goblin Alchemist', '#b4e060', '#ff9f43', 'acid flask', 88, 265, 'flask', 1.08, 0.8, 1.1],
+    ['Serapha', 'Star Oracle', '#d7a6ff', '#fff0ff', 'star scepter', 96, 255, 'staff', 1.12, 1.05, 0.98],
+    ['Grum', 'Iron Dwarf', '#a46b42', '#ffcc7a', 'war hammer', 145, 185, 'shield', 0.98, 1.65, 0.55],
+    ['Sythra', 'Dragon Blood', '#e84b36', '#ffc163', 'claws and wings', 108, 290, 'claw', 1.32, 0.95, 1.25],
+    ['Lysandra', 'Frost Sorceress', '#5fffff', '#e0f6ff', 'ice staff', 98, 260, 'staff', 1.2, 0.95, 1.05],
+    ['Kael', 'Demon Knight', '#8b0000', '#ff4444', 'dark sword', 118, 250, 'sword', 1.3, 1.25, 0.8],
+    ['Pip', 'Fairy Rogue', '#ffb6ff', '#fffacd', 'crystal dagger', 78, 355, 'dagger', 0.98, 0.62, 1.55],
+    ['Malachai', 'Death Priest', '#4a0080', '#9d4edd', 'soul scythe', 122, 225, 'claw', 1.22, 1.2, 0.85],
+    ['Ravenna', 'Storm Caller', '#1e90ff', '#00ffff', 'tempest wand', 88, 330, 'wand', 1.16, 0.72, 1.38],
+    ['Talon', 'Void Assassin', '#2d2d3d', '#b19cd9', 'void blade', 86, 345, 'dagger', 1.12, 0.68, 1.5],
+    ['Azura', 'Sea Witch', '#00bfff', '#40e0d0', 'tidal staff', 112, 230, 'staff', 1.02, 1.18, 0.85],
+    ['Ignatius', 'Solar Monk', '#ff6347', '#ffd700', 'flame fists', 108, 305, 'claw', 1.28, 0.9, 1.2]
+].map((a, i) => ({
+    id: i,
+    name: a[0], title: a[1],
+    color: a[2], accent: a[3],
+    weapon: a[4],
+    hp: a[5], speed: a[6],
+    kind: a[7],
+    atk: a[8], def: a[9], spd: a[10]
+}));
+
+// CPU difficulty: hp/dmg/move multipliers, think delay in seconds
+const D = {
+    easy:      { hp: 0.8,  dmg: 0.6,  move: 0.4,  think: 1.1 },
+    normal:    { hp: 1.0,  dmg: 1.0,  move: 0.7,  think: 0.45 },
+    hard:      { hp: 1.35, dmg: 1.25, move: 0.95, think: 0.2 },
+    nightmare: { hp: 1.6,  dmg: 1.45, move: 1.15, think: 0.08 }
+};
+
+// World units: 1 unit ~= 1 foot. Stage runs from -ARENA_W to +ARENA_W on X, y=0 is floor.
+const ARENA_W = 8;
+const GRAVITY = 25;
+const JUMP_VEL = 9;
+// Pixels-per-second in 2D were ~200-360. Divide by ~70 to get units/sec here.
+const SPEED_SCALE = 1/70;
+
+// Global state
+let scene, camera, renderer, sun, ground;
+let p1, p2;
+let sel = 1, diff = 'normal';
+let keys = {}, q = [];
+let G = { run: 0, over: 0, time: 90, fx: [], paused: 0 };
+let raf = 0, last = 0;
+let endTimer = 0;
+
+// ============================================================================
+// THREE.JS SETUP
+// ============================================================================
+
+function initScene() {
+    scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x0b1f13);
+    scene.fog = new THREE.Fog(0x0b1f13, 18, 45);
+
+    camera = new THREE.PerspectiveCamera(48, window.innerWidth / window.innerHeight, 0.1, 100);
+    camera.position.set(0, 3.4, 11);
+    camera.lookAt(0, 1.2, 0);
+
+    renderer = new THREE.WebGLRenderer({ canvas: $('game'), antialias: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+    // Lights
+    scene.add(new THREE.AmbientLight(0x6d8fc7, 0.55));
+    sun = new THREE.DirectionalLight(0xfff0d0, 1.05);
+    sun.position.set(6, 12, 7);
+    sun.castShadow = true;
+    sun.shadow.mapSize.set(1024, 1024);
+    sun.shadow.camera.left = -12;
+    sun.shadow.camera.right = 12;
+    sun.shadow.camera.top = 10;
+    sun.shadow.camera.bottom = -2;
+    sun.shadow.camera.near = 0.5;
+    sun.shadow.camera.far = 30;
+    scene.add(sun);
+
+    // Rim/back light for character readability
+    const rim = new THREE.DirectionalLight(0xf5d889, 0.35);
+    rim.position.set(-5, 6, -6);
+    scene.add(rim);
+
+    // Ground
+    const gMat = new THREE.MeshLambertMaterial({ color: 0x274b2d });
+    ground = new THREE.Mesh(new THREE.PlaneGeometry(60, 24), gMat);
+    ground.rotation.x = -Math.PI / 2;
+    ground.receiveShadow = true;
+    scene.add(ground);
+
+    // Grass tile pattern
+    const stripeMat = new THREE.MeshLambertMaterial({ color: 0x385226 });
+    for (let x = -28; x <= 28; x += 3.2) {
+        const s = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 0.6), stripeMat);
+        s.rotation.x = -Math.PI / 2;
+        s.position.set(x + (x % 2) * 0.4, 0.005, ((x * 7) % 5) - 2);
+        s.receiveShadow = true;
+        scene.add(s);
+    }
+
+    // Back wall: ruined pillars + sky bar
+    const pillarMat = new THREE.MeshLambertMaterial({ color: 0x382715 });
+    const capMat = new THREE.MeshLambertMaterial({ color: 0xd8b45a });
+    for (let x = -10; x <= 10; x += 2.5) {
+        const p = new THREE.Mesh(new THREE.BoxGeometry(0.7, 3.6 + (x % 3) * 0.2, 0.7), pillarMat);
+        p.position.set(x, 1.8 + (x % 3) * 0.1, -6);
+        p.castShadow = true;
+        p.receiveShadow = true;
+        scene.add(p);
+        const cap = new THREE.Mesh(new THREE.BoxGeometry(1, 0.25, 1), capMat);
+        cap.position.set(x, 3.6 + (x % 3) * 0.2 + 0.12, -6);
+        cap.castShadow = true;
+        scene.add(cap);
+    }
+
+    // Trees
+    const trunkMat = new THREE.MeshLambertMaterial({ color: 0x4f2f1b });
+    const leafMat = new THREE.MeshLambertMaterial({ color: 0x6fa85c });
+    for (let x = -14; x <= 14; x += 3.7) {
+        if (Math.abs(x) < 8) continue;
+        const trunk = new THREE.Mesh(new THREE.BoxGeometry(0.4, 2.5, 0.4), trunkMat);
+        trunk.position.set(x, 1.25, -3.5);
+        trunk.castShadow = true;
+        scene.add(trunk);
+        const leaves = new THREE.Mesh(new THREE.BoxGeometry(1.8, 1.6, 1.8), leafMat);
+        leaves.position.set(x, 3.1, -3.5);
+        leaves.castShadow = true;
+        scene.add(leaves);
+    }
+
+    // Sky dome — simple gradient via large inverted sphere with vertex colors
+    const skyGeo = new THREE.SphereGeometry(40, 16, 12);
+    const skyMat = new THREE.ShaderMaterial({
+        side: THREE.BackSide,
+        uniforms: { top: { value: new THREE.Color(0x6d8fc7) }, bot: { value: new THREE.Color(0x173f29) } },
+        vertexShader: 'varying float h; void main(){ h = (position.y + 40.0) / 80.0; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+        fragmentShader: 'uniform vec3 top; uniform vec3 bot; varying float h; void main(){ gl_FragColor = vec4(mix(bot, top, smoothstep(0.35, 0.85, h)), 1.0); }'
+    });
+    scene.add(new THREE.Mesh(skyGeo, skyMat));
+}
+
+// ============================================================================
+// FIGHTER MODEL — procedural cubes parented to a Group
+// ============================================================================
+
+function makeWeapon(kind, accent) {
+    const g = new THREE.Group();
+    const accCol = new THREE.Color(accent);
+    const accMat = new THREE.MeshLambertMaterial({ color: accCol });
+    const steelMat = new THREE.MeshLambertMaterial({ color: 0xf7f7ff });
+
+    if (kind === 'sword') {
+        const blade = new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.25, 0.04), steelMat);
+        blade.position.y = 0.62;
+        blade.castShadow = true;
+        g.add(blade);
+        const guard = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.08, 0.08), accMat);
+        guard.castShadow = true;
+        g.add(guard);
+        const grip = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.25, 0.07), new THREE.MeshLambertMaterial({ color: 0x3a2415 }));
+        grip.position.y = -0.18;
+        grip.castShadow = true;
+        g.add(grip);
+    } else if (kind === 'shield') {
+        // Held by left arm; treat the right hand as having a war hammer too
+        const hammerHandle = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.9, 0.07), new THREE.MeshLambertMaterial({ color: 0x3a2415 }));
+        hammerHandle.position.y = 0.42;
+        hammerHandle.castShadow = true;
+        g.add(hammerHandle);
+        const head = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.22, 0.3), accMat);
+        head.position.y = 0.95;
+        head.castShadow = true;
+        g.add(head);
+    } else if (kind === 'staff') {
+        const shaft = new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.5, 0.08), accMat);
+        shaft.position.y = 0.7;
+        shaft.castShadow = true;
+        g.add(shaft);
+        const orb = new THREE.Mesh(new THREE.SphereGeometry(0.16, 12, 10), new THREE.MeshLambertMaterial({ color: accCol, emissive: accCol, emissiveIntensity: 0.4 }));
+        orb.position.y = 1.5;
+        orb.castShadow = true;
+        g.add(orb);
+    } else if (kind === 'wand') {
+        const shaft = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.85, 0.06), accMat);
+        shaft.position.y = 0.4;
+        shaft.castShadow = true;
+        g.add(shaft);
+        const tip = new THREE.Mesh(new THREE.SphereGeometry(0.12, 10, 8), new THREE.MeshLambertMaterial({ color: accCol, emissive: accCol, emissiveIntensity: 0.6 }));
+        tip.position.y = 0.85;
+        tip.castShadow = true;
+        g.add(tip);
+    } else if (kind === 'dagger') {
+        const blade = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.55, 0.04), accMat);
+        blade.position.y = 0.27;
+        blade.castShadow = true;
+        g.add(blade);
+        const grip = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.18, 0.06), new THREE.MeshLambertMaterial({ color: 0x3a2415 }));
+        grip.position.y = -0.12;
+        grip.castShadow = true;
+        g.add(grip);
+    } else if (kind === 'claw') {
+        for (let i = -1; i <= 1; i++) {
+            const c = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.45, 0.05), accMat);
+            c.position.set(i * 0.1, 0.22, 0);
+            c.castShadow = true;
+            g.add(c);
+        }
+    } else if (kind === 'flask') {
+        const flask = new THREE.Mesh(new THREE.SphereGeometry(0.18, 12, 10), new THREE.MeshLambertMaterial({ color: accCol, emissive: accCol, emissiveIntensity: 0.3, transparent: true, opacity: 0.85 }));
+        flask.position.y = 0.18;
+        flask.castShadow = true;
+        g.add(flask);
+        const neck = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.15, 0.08), new THREE.MeshLambertMaterial({ color: 0x3a2415 }));
+        neck.position.y = 0.4;
+        neck.castShadow = true;
+        g.add(neck);
+    }
+
+    return g;
+}
+
+function buildFighterMesh(ch) {
+    const root = new THREE.Group();
+    const bodyCol = new THREE.Color(ch.color);
+    const accentCol = new THREE.Color(ch.accent);
+    const skinCol = ch.kind === 'staff' && ch.name === 'Morvane' ? 0xc9f7c9
+                 : ch.kind === 'flask' ? 0xa2e36d
+                 : 0xf0c087;
+
+    const bodyMat = new THREE.MeshLambertMaterial({ color: bodyCol });
+    const accentMat = new THREE.MeshLambertMaterial({ color: accentCol });
+    const skinMat = new THREE.MeshLambertMaterial({ color: skinCol });
+    const darkMat = new THREE.MeshLambertMaterial({ color: 0x1d1308 });
+    const bootMat = new THREE.MeshLambertMaterial({ color: 0x050008 });
+
+    // Torso (chest armor)
+    const torso = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.95, 0.4), bodyMat);
+    torso.position.y = 1.05;
+    torso.castShadow = true;
+    root.add(torso);
+
+    // Belt
+    const belt = new THREE.Mesh(new THREE.BoxGeometry(0.78, 0.12, 0.45), darkMat);
+    belt.position.y = 0.62;
+    belt.castShadow = true;
+    root.add(belt);
+
+    // Shoulder trim
+    const shoulderL = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.18, 0.45), accentMat);
+    shoulderL.position.set(-0.36, 1.42, 0);
+    shoulderL.castShadow = true;
+    root.add(shoulderL);
+    const shoulderR = shoulderL.clone();
+    shoulderR.position.x = 0.36;
+    root.add(shoulderR);
+
+    // Head
+    const head = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.4, 0.4), skinMat);
+    head.position.y = 1.78;
+    head.castShadow = true;
+    root.add(head);
+
+    // Hair / helm (per character)
+    addHeadDetail(root, ch, accentMat, darkMat);
+
+    // Eyes — two small dark cubes on the front face
+    const eye = new THREE.MeshLambertMaterial({ color: 0x050008 });
+    const eyeL = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, 0.02), eye);
+    eyeL.position.set(-0.09, 1.82, 0.21);
+    root.add(eyeL);
+    const eyeR = eyeL.clone();
+    eyeR.position.x = 0.09;
+    root.add(eyeR);
+
+    // Arms — each one is a Group pivoted at the shoulder so we can rotate
+    const armL = new THREE.Group();
+    armL.position.set(-0.46, 1.5, 0);
+    const armLMesh = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.7, 0.18), bodyMat);
+    armLMesh.position.y = -0.32;
+    armLMesh.castShadow = true;
+    armL.add(armLMesh);
+    const handL = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.18, 0.2), skinMat);
+    handL.position.y = -0.72;
+    handL.castShadow = true;
+    armL.add(handL);
+    root.add(armL);
+
+    const armR = new THREE.Group();
+    armR.position.set(0.46, 1.5, 0);
+    const armRMesh = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.7, 0.18), bodyMat);
+    armRMesh.position.y = -0.32;
+    armRMesh.castShadow = true;
+    armR.add(armRMesh);
+    const handR = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.18, 0.2), skinMat);
+    handR.position.y = -0.72;
+    handR.castShadow = true;
+    armR.add(handR);
+    root.add(armR);
+
+    // Weapon — parented to right arm so it follows the swing
+    const weapon = makeWeapon(ch.kind, ch.accent);
+    weapon.position.y = -0.78;
+    armR.add(weapon);
+
+    // Shield (only for shield-kind, parented to left arm)
+    let shield = null;
+    if (ch.kind === 'shield') {
+        shield = new THREE.Group();
+        const plate = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.7, 0.06), accentMat);
+        plate.castShadow = true;
+        shield.add(plate);
+        const boss = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.18, 0.08), bodyMat);
+        boss.position.z = 0.05;
+        shield.add(boss);
+        shield.position.set(0, -0.55, 0.2);
+        armL.add(shield);
+    }
+
+    // Legs — each is a Group pivoted at the hip
+    const legL = new THREE.Group();
+    legL.position.set(-0.18, 0.55, 0);
+    const legLMesh = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.55, 0.22), darkMat);
+    legLMesh.position.y = -0.28;
+    legLMesh.castShadow = true;
+    legL.add(legLMesh);
+    const bootL = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.12, 0.32), bootMat);
+    bootL.position.y = -0.6;
+    bootL.position.z = 0.05;
+    bootL.castShadow = true;
+    legL.add(bootL);
+    root.add(legL);
+
+    const legR = legL.clone();
+    legR.position.x = 0.18;
+    root.add(legR);
+
+    // Cape (for staff/shield/wand)
+    let cape = null;
+    if (['staff', 'shield', 'wand'].includes(ch.kind)) {
+        cape = new THREE.Mesh(
+            new THREE.PlaneGeometry(0.85, 1.1),
+            new THREE.MeshLambertMaterial({ color: accentCol, side: THREE.DoubleSide, transparent: true, opacity: 0.85 })
+        );
+        cape.position.set(0, 1.0, -0.22);
+        cape.castShadow = true;
+        root.add(cape);
+    }
+
+    // Block aura — only visible when blocking
+    const aura = new THREE.Mesh(
+        new THREE.SphereGeometry(0.95, 16, 12),
+        new THREE.MeshBasicMaterial({ color: accentCol, transparent: true, opacity: 0, depthWrite: false })
+    );
+    aura.position.y = 1.0;
+    root.add(aura);
+
+    // Stash references for animation
+    root.userData = { torso, head, armL, armR, legL, legR, weapon, shield, cape, aura };
+
+    return root;
+}
+
+function addHeadDetail(root, ch, accentMat, darkMat) {
+    // Quick character-flavored headwear, mirroring the 2D version's sketches.
+    const h = new THREE.Group();
+    h.position.y = 0;
+    root.add(h);
+    const make = (geom, mat, x, y, z) => {
+        const m = new THREE.Mesh(geom, mat);
+        m.position.set(x, y, z);
+        m.castShadow = true;
+        h.add(m);
+        return m;
+    };
+    const accent = new THREE.Color(ch.accent);
+    if (ch.name === 'Aurelian') {
+        make(new THREE.BoxGeometry(0.46, 0.1, 0.46), accentMat, 0, 2.04, 0);
+    } else if (ch.name === 'Morvane') {
+        make(new THREE.BoxGeometry(0.42, 0.18, 0.42), darkMat, 0, 2.08, 0);
+        make(new THREE.BoxGeometry(0.08, 0.16, 0.04), new THREE.MeshLambertMaterial({ color: accent, emissive: accent, emissiveIntensity: 0.5 }), 0, 2.22, 0.18);
+    } else if (ch.name === 'Emberlyn') {
+        make(new THREE.BoxGeometry(0.46, 0.3, 0.46), new THREE.MeshLambertMaterial({ color: 0xff3d00 }), 0, 2.14, 0);
+        make(new THREE.BoxGeometry(0.34, 0.16, 0.34), new THREE.MeshLambertMaterial({ color: 0xff6a00 }), 0, 2.36, 0);
+    } else if (ch.name === 'Nyx' || ch.name === 'Talon') {
+        make(new THREE.BoxGeometry(0.44, 0.18, 0.44), darkMat, 0, 2.04, 0);
+    } else if (ch.name === 'Boreas') {
+        make(new THREE.BoxGeometry(0.48, 0.12, 0.48), new THREE.MeshLambertMaterial({ color: 0xe9fbff }), 0, 2.04, 0);
+        make(new THREE.BoxGeometry(0.08, 0.14, 0.04), new THREE.MeshLambertMaterial({ color: 0xa8f0ff }), -0.14, 2.16, 0.18);
+        make(new THREE.BoxGeometry(0.08, 0.14, 0.04), new THREE.MeshLambertMaterial({ color: 0xa8f0ff }), 0.14, 2.16, 0.18);
+    } else if (ch.name === 'Kairo') {
+        make(new THREE.BoxGeometry(0.46, 0.1, 0.46), new THREE.MeshLambertMaterial({ color: 0xf7f7ff }), 0, 2.04, 0);
+        make(new THREE.BoxGeometry(0.5, 0.06, 0.06), darkMat, 0, 1.74, 0.2);
+    } else if (ch.name === 'Grum') {
+        make(new THREE.BoxGeometry(0.5, 0.12, 0.5), new THREE.MeshLambertMaterial({ color: 0xd9a05f }), 0, 2.04, 0);
+        make(new THREE.BoxGeometry(0.34, 0.16, 0.34), accentMat, 0, 1.9, 0.16); // big beard
+    } else if (ch.name === 'Ravenna') {
+        make(new THREE.BoxGeometry(0.46, 0.32, 0.46), new THREE.MeshLambertMaterial({ color: 0x051426 }), 0, 2.18, 0);
+        make(new THREE.BoxGeometry(0.08, 0.18, 0.04), new THREE.MeshLambertMaterial({ color: 0x00ffff, emissive: 0x00ffff, emissiveIntensity: 0.7 }), 0, 2.38, 0.2);
+    } else if (ch.name === 'Sythra') {
+        // Horns
+        make(new THREE.BoxGeometry(0.1, 0.22, 0.1), accentMat, -0.18, 2.1, 0);
+        make(new THREE.BoxGeometry(0.1, 0.22, 0.1), accentMat, 0.18, 2.1, 0);
+    } else if (ch.name === 'Pip') {
+        // Tiny crown / sparkle
+        make(new THREE.BoxGeometry(0.3, 0.08, 0.3), accentMat, 0, 2.02, 0);
+        make(new THREE.SphereGeometry(0.05, 8, 6), new THREE.MeshLambertMaterial({ color: accent, emissive: accent, emissiveIntensity: 0.7 }), 0, 2.12, 0);
+    } else if (ch.name === 'Kael') {
+        // Demon helm with horns
+        make(new THREE.BoxGeometry(0.46, 0.22, 0.46), darkMat, 0, 2.08, 0);
+        make(new THREE.BoxGeometry(0.06, 0.16, 0.06), accentMat, -0.18, 2.22, 0);
+        make(new THREE.BoxGeometry(0.06, 0.16, 0.06), accentMat, 0.18, 2.22, 0);
+    } else if (ch.name === 'Malachai') {
+        // Priest hood
+        make(new THREE.BoxGeometry(0.5, 0.34, 0.5), new THREE.MeshLambertMaterial({ color: 0x2d143e }), 0, 2.12, 0);
+    } else {
+        // Generic accent band
+        make(new THREE.BoxGeometry(0.44, 0.06, 0.44), accentMat, 0, 2.02, 0);
+    }
+}
+
+// ============================================================================
+// FIGHTER STATE
+// ============================================================================
+
+function fighter(x, ch, enemy = 0) {
+    const hp = Math.round(ch.hp * 2.35);
+    const mesh = buildFighterMesh(ch);
+    mesh.position.set(x, 0, 0);
+    mesh.rotation.y = enemy ? Math.PI : 0;
+    scene.add(mesh);
+    return {
+        x, y: 0, vx: 0, vy: 0,
+        dir: enemy ? -1 : 1,
+        w: 0.9, h: 2.1,
+        hp, maxHp: hp,
+        sup: 0,
+        sta: 100, maxSta: 100, tired: 0,
+        ch, enemy,
+        on: 1, cd: 0, blk: 0,
+        atk: null, ai: 0,
+        mesh,
+        animPhase: 0
+    };
+}
+
+function disposeMesh(root) {
+    if (!root) return;
+    root.traverse(obj => {
+        if (obj.geometry) obj.geometry.dispose();
+        if (obj.material) {
+            if (Array.isArray(obj.material)) obj.material.forEach(m => m.dispose());
+            else obj.material.dispose();
+        }
+    });
+    scene.remove(root);
+}
+
+// ============================================================================
+// COMBAT
+// ============================================================================
+
+function cl(v, a, b) { return Math.max(a, Math.min(b, v)); }
+function rr(a, b) { return a + Math.random() * (b - a); }
+
+function spendSta(f, n) {
+    if (f.sta < n) {
+        f.tired = 0.7;
+        flash('Tired');
+        return false;
+    }
+    f.sta = Math.max(0, f.sta - n);
+    if (f.sta <= 8) f.tired = 0.6;
+    return true;
+}
+
+// 2D AABB overlap in XY plane (Z is fixed)
+function rectsOverlap(a, b) {
+    return a.x < b.x + b.w && a.x + a.w > b.x &&
+           a.y < b.y + b.h && a.y + a.h > b.y;
+}
+
+// Hitbox of a fighter in world space (origin at feet center)
+function fighterBox(f) {
+    return { x: f.x - f.w / 2, y: f.y, w: f.w, h: f.h };
+}
+
+const MELEE_KINDS = ['sword', 'shield', 'dagger', 'claw'];
+function isMelee(f) { return MELEE_KINDS.includes(f.ch.kind); }
+
+function meleeProfile(f) {
+    return {
+        sword:  { lightReach: 1.0, heavyReach: 1.45, lightDmg: 8, heavyDmg: 16, lightCd: 0.32, heavyCd: 0.58, lunge: 2.2, active: 0.22, knock: 4.8 },
+        shield: { lightReach: 0.9, heavyReach: 1.25, lightDmg: 7, heavyDmg: 14, lightCd: 0.34, heavyCd: 0.62, lunge: 1.6, active: 0.23, knock: 5.7 },
+        dagger: { lightReach: 0.85, heavyReach: 1.2, lightDmg: 6, heavyDmg: 12, lightCd: 0.26, heavyCd: 0.46, lunge: 3.2, active: 0.2, knock: 3.4 },
+        claw:   { lightReach: 0.92, heavyReach: 1.3, lightDmg: 8, heavyDmg: 15, lightCd: 0.29, heavyCd: 0.52, lunge: 2.7, active: 0.22, knock: 4.3 }
+    }[f.ch.kind];
+}
+
+function attack(f, type) {
+    if (f.cd > 0) return;
+    const heavy = type === 'heavy';
+
+    if (isMelee(f)) {
+        const p = meleeProfile(f);
+        if (!spendSta(f, heavy ? 27 : 13)) return;
+        f.vx += f.dir * p.lunge;
+        f.atk = {
+            t: heavy ? 0.38 : 0.28,
+            a: p.active,
+            reach: heavy ? p.heavyReach : p.lightReach,
+            dmg: heavy ? p.heavyDmg : p.lightDmg,
+            knock: p.knock,
+            melee: 1,
+            hit: 0,
+            dur: heavy ? 0.38 : 0.28
+        };
+        f.cd = heavy ? p.heavyCd : p.lightCd;
+    } else {
+        // Ranged characters (staff/wand/flask): a basic "shot" as the light attack;
+        // heavy is a stronger close swing.
+        if (!spendSta(f, heavy ? 22 : 10)) return;
+        if (!heavy) {
+            G.fx.push(makeShot(f));
+            f.cd = 0.5;
+            f.atk = { t: 0.18, a: 0.12, dur: 0.18, hit: 1, ranged: 1 };
+        } else {
+            f.atk = {
+                t: 0.34, a: 0.2, reach: 0.75, dmg: 14, knock: 3.2, hit: 0, dur: 0.34
+            };
+            f.cd = 0.52;
+        }
+    }
+}
+
+function makeShot(f) {
+    const accent = new THREE.Color(f.ch.accent);
+    const mat = new THREE.MeshLambertMaterial({ color: accent, emissive: accent, emissiveIntensity: 0.8 });
+    const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.18, 10, 8), mat);
+    mesh.position.set(f.x + f.dir * 0.5, f.y + 1.1, 0);
+    mesh.castShadow = true;
+    scene.add(mesh);
+    return {
+        kind: 'shot',
+        x: f.x + f.dir * 0.5,
+        y: f.y + 1.1,
+        vx: f.dir * 8.5,
+        vy: 0,
+        r: 0.22,
+        dmg: 10,
+        life: 1.4,
+        own: f,
+        mesh
+    };
+}
+
+function block(f) {
+    if (f.cd > 0) return;
+    if (!spendSta(f, 8)) return;
+    f.blk = f.ch.kind === 'shield' ? 1.05 : 0.75;
+    f.cd = 0.12;
+}
+
+function jumpFighter(f) {
+    if (!f.on) return;
+    if (!spendSta(f, 13)) return;
+    f.vy = JUMP_VEL;
+    f.on = 0;
+}
+
+function damage(t, n, k) {
+    if (t.blk > 0) {
+        // Block reduces damage. Shield blocks more than other kinds; front-side better.
+        const shieldBonus = t.ch.kind === 'shield' ? 0.5 : 1;
+        n *= 0.28 * shieldBonus;
+        k *= 0.4 * shieldBonus;
+        t.sta = cl(t.sta - 9 * shieldBonus, 0, t.maxSta);
+        if (t.sta <= 0) {
+            t.blk = 0;
+            t.tired = 0.9;
+            n *= 2.5;
+            flash('Guard Break!');
+        }
+    }
+    // Scale by attacker's atk modifier and defender's def modifier
+    const attackerCh = (t === p1) ? p2.ch : p1.ch;
+    n *= attackerCh.atk;
+    n /= t.ch.def;
+    // Difficulty: CPU does scaled damage to player
+    if (t === p1) n *= D[diff].dmg;
+    t.hp = Math.max(0, t.hp - n);
+    t.vx += k;
+    t.sup = cl(t.sup + n * 0.35, 0, 100);
+}
+
+function resolve() {
+    // Melee hits
+    for (const [a, b] of [[p1, p2], [p2, p1]]) {
+        if (a.atk && !a.atk.hit && a.atk.melee && a.atk.a > 0) {
+            const reach = a.atk.reach;
+            const ax = a.dir > 0 ? a.x + a.w / 2 : a.x - a.w / 2 - reach;
+            const swing = { x: ax, y: a.y + 0.3, w: reach, h: a.h * 0.7 };
+            const target = fighterBox(b);
+            if (rectsOverlap(swing, target)) {
+                damage(b, a.atk.dmg, a.dir * a.atk.knock);
+                a.atk.hit = 1;
+            }
+        }
+    }
+    // Shots
+    for (const s of G.fx) {
+        if (s.kind !== 'shot' || s.dead) continue;
+        const tgt = s.own === p1 ? p2 : p1;
+        const sb = { x: s.x - s.r, y: s.y - s.r, w: s.r * 2, h: s.r * 2 };
+        if (rectsOverlap(sb, fighterBox(tgt))) {
+            damage(tgt, s.dmg, Math.sign(s.vx) * 1.6);
+            s.dead = 1;
+        }
+    }
+}
+
+// ============================================================================
+// PHYSICS / CONTROL / AI
+// ============================================================================
+
+function applyControl(f, ks) {
+    if (f.tired > 0) f.vx *= 0.62;
+    const moving = ks.left || ks.right;
+    if (ks.left) { f.vx = -f.ch.speed * SPEED_SCALE * f.ch.spd; f.dir = -1; }
+    else if (ks.right) { f.vx = f.ch.speed * SPEED_SCALE * f.ch.spd; f.dir = 1; }
+    else f.vx *= 0.6; // ground friction (we'll keep additional decay in phys for air)
+
+    if (ks.up && f.on) jumpFighter(f);
+}
+
+function phys(f, dt) {
+    f.cd = Math.max(0, f.cd - dt);
+    f.blk = Math.max(0, f.blk - dt);
+    f.tired = Math.max(0, f.tired - dt);
+    const acting = !!f.atk || !!f.blk;
+    f.sta = cl(f.sta + dt * (acting ? 8 : 34), 0, f.maxSta);
+
+    if (f.atk) {
+        f.atk.t -= dt;
+        f.atk.a -= dt;
+        if (f.atk.t <= 0) f.atk = null;
+    }
+
+    f.vy -= GRAVITY * dt;
+    f.x += f.vx * dt;
+    f.y += f.vy * dt;
+    f.vx *= f.on ? 0.86 : 0.98;
+    if (f.y <= 0) { f.y = 0; f.vy = 0; f.on = 1; }
+    else f.on = 0;
+    f.x = cl(f.x, -ARENA_W + 0.5, ARENA_W - 0.5);
+}
+
+function ai(cpu) {
+    const player = cpu === p1 ? p2 : p1;
+    const d = player.x - cpu.x;
+    const dist = Math.abs(d);
+    const o = D[diff];
+    const melee = isMelee(cpu);
+    const side = dist < 0.05 ? cpu.dir : Math.sign(d);
+    cpu.dir = side < 0 ? -1 : 1;
+    cpu.ai -= 1 / 60;
+
+    const closeRange = melee ? 1.2 : 1.6;
+    const farRange = 2.2;
+
+    if (dist > farRange) cpu.vx = side * cpu.ch.speed * SPEED_SCALE * o.move;
+    else if (dist < 0.9) cpu.vx = -side * cpu.ch.speed * SPEED_SCALE * 0.4;
+    else cpu.vx = side * (melee ? 0.6 : 0.25);
+
+    if (cpu.cd <= 0 && cpu.ai <= 0) {
+        cpu.ai = o.think;
+        if (dist < closeRange) {
+            attack(cpu, Math.random() < 0.65 ? 'light' : 'heavy');
+        } else if (!melee && Math.random() < 0.55) {
+            attack(cpu, 'light'); // shoot
+        }
+    }
+}
+
+// ============================================================================
+// ANIMATION — rotate limbs based on state
+// ============================================================================
+
+function animate(f, dt) {
+    f.animPhase += dt;
+    const u = f.mesh.userData;
+    const running = Math.abs(f.vx) > 0.6;
+    const swingFreq = running ? 10 : 4;
+    const swingAmp = running ? 0.9 : 0.18;
+    const phase = f.animPhase * swingFreq;
+
+    // Legs swing back and forth
+    u.legL.rotation.x = Math.sin(phase) * swingAmp;
+    u.legR.rotation.x = -Math.sin(phase) * swingAmp;
+    if (!f.on) {
+        u.legL.rotation.x = -0.4;
+        u.legR.rotation.x = 0.4;
+    }
+
+    // Arms swing opposite when running, lift when attacking
+    const armPhase = -Math.sin(phase) * swingAmp * 0.7;
+    u.armL.rotation.x = armPhase;
+    u.armR.rotation.x = -armPhase;
+
+    if (f.atk) {
+        const t = 1 - cl(f.atk.t / (f.atk.dur || 0.3), 0, 1);
+        const arc = Math.sin(t * Math.PI);
+        // Big swing from shoulder
+        u.armR.rotation.x = -1.4 + arc * 2.2;
+        u.armR.rotation.z = -0.2 - arc * 0.6;
+        if (f.atk.melee) {
+            // Slight body lean into the strike
+            f.mesh.rotation.z = arc * 0.18 * -f.dir;
+        }
+    } else {
+        f.mesh.rotation.z *= 0.85;
+    }
+
+    // Block: raise shield arm forward, show aura
+    if (u.shield) u.shield.visible = true;
+    if (f.blk > 0) {
+        u.armL.rotation.x = -1.5;
+        u.armL.rotation.z = 0.3;
+        if (u.aura) u.aura.material.opacity = 0.35;
+    } else {
+        if (u.aura) u.aura.material.opacity *= 0.85;
+    }
+
+    // Tired wobble
+    if (f.tired > 0) {
+        f.mesh.rotation.z += Math.sin(performance.now() / 80) * 0.04;
+    }
+
+    // Cape sway
+    if (u.cape) {
+        u.cape.rotation.x = 0.15 + Math.sin(f.animPhase * 3) * 0.08 + (running ? -0.18 : 0);
+    }
+
+    // Position on stage
+    f.mesh.position.x = f.x;
+    f.mesh.position.y = f.y;
+    f.mesh.position.z = 0;
+
+    // Face the right direction (player 1 looks +X, player 2 -X)
+    f.mesh.rotation.y = f.dir > 0 ? 0 : Math.PI;
+}
+
+// ============================================================================
+// FX UPDATE
+// ============================================================================
+
+function updateFx(dt) {
+    for (const s of G.fx) {
+        if (s.kind !== 'shot') continue;
+        if (s.dead) { disposeMesh(s.mesh); continue; }
+        s.x += s.vx * dt;
+        s.y += s.vy * dt;
+        s.life -= dt;
+        s.mesh.position.set(s.x, s.y, 0);
+        if (s.life <= 0 || Math.abs(s.x) > ARENA_W + 1) s.dead = 1;
+    }
+    G.fx = G.fx.filter(s => !s.dead);
+}
+
+// ============================================================================
+// HUD + UI
+// ============================================================================
+
+function bars() {
+    els.p1bar.style.width = cl(p1.hp / p1.maxHp * 100, 0, 100) + '%';
+    els.p2bar.style.width = cl(p2.hp / p2.maxHp * 100, 0, 100) + '%';
+    els.p1sup.style.width = cl(p1.sup, 0, 100) + '%';
+    els.p2sup.style.width = cl(p2.sup, 0, 100) + '%';
+    els.p1sta.style.width = cl(p1.sta / p1.maxSta * 100, 0, 100) + '%';
+    els.p2sta.style.width = cl(p2.sta / p2.maxSta * 100, 0, 100) + '%';
+}
+
+function flash(text) {
+    els.pop.textContent = text;
+    els.pop.style.display = 'block';
+    clearTimeout(flash._t);
+    flash._t = setTimeout(() => els.pop.style.display = 'none', 850);
+}
+
+function makeCards() {
+    els.fighters.innerHTML = '';
+    chars.forEach((ch, i) => {
+        const d = document.createElement('div');
+        d.className = 'fighter' + (i === sel ? ' sel' : '');
+        d.onclick = () => { sel = i; makeCards(); };
+        d.innerHTML =
+            '<div class="swatch" style="background:linear-gradient(135deg,' + ch.color + ',' + ch.accent + ')"></div>' +
+            '<b>' + ch.name + '</b>' +
+            '<span>' + ch.title + '</span>' +
+            '<span>Weapon: ' + ch.weapon + '</span>';
+        els.fighters.appendChild(d);
+    });
+}
+
+function setDiff(v) {
+    if (!D[v]) return;
+    diff = v;
+    document.querySelectorAll('.diff').forEach(b => b.classList.toggle('sel', b.dataset.d === v));
+}
+
+// ============================================================================
+// GAME FLOW
+// ============================================================================
+
+function startGame() {
+    // Tear down any prior fighters
+    if (p1) disposeMesh(p1.mesh);
+    if (p2) disposeMesh(p2.mesh);
+    for (const s of G.fx) disposeMesh(s.mesh);
+
+    G = { run: 1, over: 0, time: 90, fx: [], paused: 0 };
+    keys = {}; q = [];
+
+    p1 = fighter(-3, chars[sel]);
+    let ei = Math.floor(Math.random() * chars.length);
+    if (ei === sel) ei = (ei + 1) % chars.length;
+    p2 = fighter(3, chars[ei], 1);
+    p2.hp = p2.maxHp = Math.round(p2.maxHp * D[diff].hp);
+
+    els.p1name.textContent = p1.ch.name + ' — ' + p1.ch.title;
+    els.p2name.textContent = p2.ch.name + ' — ' + p2.ch.title + ' (' + diff + ')';
+    els.menu.style.display = 'none';
+    els.msg.style.display = 'none';
+    els.hud.style.display = 'flex';
+    els.labels.style.display = 'flex';
+    bars();
+
+    cancelAnimationFrame(raf);
+    last = performance.now();
+    raf = requestAnimationFrame(loop);
+}
+
+function showMenu() {
+    G.run = 0; G.over = 0;
+    if (p1) { disposeMesh(p1.mesh); p1 = null; }
+    if (p2) { disposeMesh(p2.mesh); p2 = null; }
+    for (const s of G.fx) disposeMesh(s.mesh);
+    G.fx = [];
+    clearTimeout(endTimer);
+    els.menu.style.display = 'flex';
+    els.hud.style.display = 'none';
+    els.labels.style.display = 'none';
+    els.msg.style.display = 'none';
+    makeCards();
+}
+
+function endGame() {
+    if (G.over) return;
+    G.over = 1; G.run = 0;
+    const tie = p1.hp === p2.hp;
+    const winner = p1.hp > p2.hp ? p1 : p2;
+    els.msg.innerHTML = (tie ? 'DRAW' : winner.ch.name + ' WINS') +
+        '<br><span style="font-size:22px;color:#fff">returning to menu</span>';
+    els.msg.style.display = 'flex';
+    endTimer = setTimeout(showMenu, 2600);
+}
+
+// ============================================================================
+// CAMERA — soft follow that frames both fighters
+// ============================================================================
+
+function updateCamera(dt) {
+    const cx = (p1.x + p2.x) / 2;
+    const dist = Math.abs(p1.x - p2.x);
+    const zoomTarget = 9 + cl(dist - 4, 0, 8) * 0.6;
+    const target = new THREE.Vector3(cx * 0.3, 1.3, 0);
+    camera.position.x += (cx * 0.25 - camera.position.x) * Math.min(1, dt * 3);
+    camera.position.z += (zoomTarget - camera.position.z) * Math.min(1, dt * 2);
+    camera.lookAt(target);
+}
+
+// ============================================================================
+// MAIN LOOP
+// ============================================================================
+
+function readKeys() {
+    return {
+        left: !!(keys.arrowleft || keys.a),
+        right: !!(keys.arrowright || keys.d),
+        up: !!(keys.arrowup || keys.w),
+        down: !!(keys.arrowdown || keys.s),
+        z: !!keys.z,
+        v: !!keys.v,
+        x: !!keys.x
+    };
+}
+
+function processQueue(f) {
+    while (q.length) {
+        const k = q.shift();
+        if (k === 'z') block(f);
+        else if (k === 'v') attack(f, 'light');
+        else if (k === 'x') attack(f, 'heavy');
+    }
+}
+
+function update(dt) {
+    if (!G.run || G.over || G.paused) return;
+    const ks = readKeys();
+    applyControl(p1, ks);
+    processQueue(p1);
+    ai(p2);
+    phys(p1, dt);
+    phys(p2, dt);
+    resolve();
+    updateFx(dt);
+    G.time -= dt;
+    els.timer.textContent = Math.max(0, Math.ceil(G.time));
+    bars();
+    animate(p1, dt);
+    animate(p2, dt);
+    updateCamera(dt);
+    if (p1.hp <= 0 || p2.hp <= 0 || G.time <= 0) endGame();
+}
+
+function loop(now) {
+    if (!G.run && !G.over) return;
+    const dt = Math.min(0.033, (now - last) / 1000 || 1 / 60);
+    last = now;
+    update(dt);
+    renderer.render(scene, camera);
+    raf = requestAnimationFrame(loop);
+}
+
+// ============================================================================
+// INPUT
+// ============================================================================
+
+function bindInput() {
+    addEventListener('keydown', e => {
+        const k = e.key.toLowerCase();
+        if (!keys[k]) {
+            // queue press-once actions
+            if (['z', 'v', 'x'].includes(k)) q.push(k);
+            if (k === 'escape' && G.run) showMenu();
+            if (k === 'p' && G.run) G.paused = !G.paused;
+        }
+        keys[k] = true;
+        if (['arrowleft','arrowright','arrowup','arrowdown',' '].includes(e.key) ||
+            ['w','a','s','d','z','v','x'].includes(k)) e.preventDefault();
+    });
+    addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
+}
+
+function bindUI() {
+    els.playBtn.onclick = startGame;
+    els.controlsBtn.onclick = () => els.how.classList.toggle('show');
+    document.querySelectorAll('.diff').forEach(b => b.onclick = () => setDiff(b.dataset.d));
+    els.msg.onclick = () => { if (G.over) showMenu(); };
+    addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+}
+
+// ============================================================================
+// BOOT
+// ============================================================================
+
+initScene();
+bindInput();
+bindUI();
+makeCards();
+// First-frame render so the menu has something behind it
+renderer.render(scene, camera);
+</script>
+</body>
+</html>
