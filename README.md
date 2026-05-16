@@ -30,11 +30,13 @@ Browsers block ES modules over `file://`, so a local server is required.
 
 - All 20 characters from the 2D game, with their stats, weapon kinds, and accent colors
 - Procedural 3D fighter models (box-based, character-flavored headwear, capes, weapons)
+- **3D character previews** rendered into each menu card (rendered once at boot via an offscreen renderer, snapshotted to PNG, set as card background)
 - 2.5D combat plane with side-angle camera that follows and zooms based on fighter distance
 - Movement, jump, block, light + heavy attacks
 - Stamina, super meter, cooldowns, tired state, guard break
 - Projectile attacks for ranged kinds (staff / wand / flask)
 - CPU AI with 4 difficulty modes
+- **Multiplayer** — HOST / JOIN with 6-digit codes. Same-machine via `BroadcastChannel`, cross-device via PeerJS WebRTC. Host is authoritative; joiner predicts their own fighter locally and reconciles to host state at ~20 Hz
 - HP / timer / win conditions
 - Procedural limb animation (run cycle, attack arc, block stance, cape sway)
 
@@ -44,7 +46,6 @@ Browsers block ES modules over `file://`, so a local server is required.
 - Ultimates (Space) — cinematic super moves
 - Grab (Shift) and counter (B)
 - Hidden combos (VXC, CVC, XXV)
-- Multiplayer (PeerJS WebRTC, 6-digit join codes) — present in 2D version
 - Story mode, skins / crate shop, procedural audio
 
 ## Credits

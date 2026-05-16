@@ -49,13 +49,17 @@ The script section is organized into clearly-labeled blocks:
 | `D` (difficulty) and constants | `GRAVITY`, `JUMP_VEL`, `ARENA_W`, `SPEED_SCALE`, `MELEE_KINDS` |
 | `initScene` | Three.js setup: scene, camera, renderer, lights, ground, pillars, trees, sky shader |
 | `makeWeapon` / `buildFighterMesh` / `addHeadDetail` | Procedural fighter models built from `BoxGeometry` / `SphereGeometry` parented to a `THREE.Group` |
+| `renderCharacterPreviews` | Once at boot, render every fighter into a hidden offscreen canvas and stash the PNG data URLs in `charPreviews` — used as menu-card backgrounds |
 | `fighter` | Spawns a fighter state object + mesh; mirrors `fighter()` in the 2D version |
 | `attack`, `block`, `jumpFighter`, `damage` | Combat verbs. Mirror their 2D namesakes |
 | `meleeProfile` | Per-weapon-kind reach / damage / cooldown / lunge values |
 | `phys`, `applyControl`, `ai` | Tick: cooldowns, gravity, friction, CPU logic |
 | `resolve` | Hit detection — melee swing rectangle + projectile vs. fighter AABB |
 | `animate` | Procedural limb animation (legs swing when running, weapon arm arcs on attack, shield raises on block) |
-| `update`, `loop` | Main game loop; render via `renderer.render(scene, camera)` |
+| `fighterSnap` / `applyFighterSnap` / `netG` / `applyNetG` | Wire-format encoders/decoders for multiplayer state sync |
+| `openRoom` / `closeRoom` / `setupPeerRoom` / `attachPeerConnection` / `send` / `onNet` | Multiplayer transport: BroadcastChannel + PeerJS WebRTC. Host is authoritative; joiner predicts locally |
+| `hostGame`, `joinGame`, `startMatchAsHost`, `enterMatchUI` | Multiplayer entry points and match-start UI transitions |
+| `update`, `loop` | Main game loop; render via `renderer.render(scene, camera)`. Branches on `net.role`: `cpu` runs full sim, `host` uses `net.keys` for p2, `join` does only local p2 prediction + receives state |
 | `makeCards`, `bars`, `flash` | HTML overlay UI |
 | `startGame`, `showMenu`, `endGame` | State transitions |
 
@@ -71,7 +75,7 @@ The script section is organized into clearly-labeled blocks:
 
 See `README.md` for the player-facing scope summary. Internally:
 
-**In v1:** rendering, all 20 characters, light/heavy attack, block, jump, stamina, super meter (charges but doesn't fire), CPU AI, win/lose, HUD, end screen.
+**In v1:** rendering, all 20 characters, 3D character previews on menu cards, light/heavy attack, block, jump, stamina, super meter (charges but doesn't fire), CPU AI, multiplayer (HOST / JOIN via BroadcastChannel + PeerJS), win/lose, HUD, end screen.
 
 **Deferred — don't preempt these:**
 
@@ -79,7 +83,6 @@ See `README.md` for the player-facing scope summary. Internally:
 - Ultimates (Space) — cinematic 1.55s super move scenes per character (`ULT` table in 2D version).
 - Grab (Shift) and counter (B).
 - Hidden combos (VXC, CVC, XXV).
-- Multiplayer — PeerJS WebRTC + BroadcastChannel + 6-digit code. The 2D version's net code can port largely verbatim once combat is stable.
 - Story mode, skins / crate shop, procedural audio (Web Audio API synth).
 
 **Why deferred is meaningful:** adding any of these well requires a non-trivial chunk of work. Don't half-implement them. If you're touching `attack()` or `damage()` and tempted to "drop in" signature-move handling, stop and write it as a focused change.

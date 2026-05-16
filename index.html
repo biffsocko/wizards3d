@@ -7,22 +7,26 @@
 <style>
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;overflow:hidden;background:#07140c;color:white;font-family:Georgia,"Times New Roman",serif}
-canvas{display:block;width:100vw;height:100vh}
+canvas{display:block}
+#game{width:100vw;height:100vh}
 #ui{position:fixed;inset:0;pointer-events:none}
 .menu{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:auto;background:linear-gradient(145deg,#07140c,#163b22 42%,#2e2111 78%,#080b07)}
 .card{width:min(980px,94vw);max-height:94vh;overflow:auto;text-align:center;padding:28px;border:4px ridge #d8b45a;border-radius:18px;background:#102413f2}
 h1{margin:0 0 8px;font-size:clamp(44px,8vw,86px);line-height:.9;letter-spacing:2px;color:#f5d889}
 .subtitle{margin-bottom:18px;color:#e7d9b7;font:18px Georgia}
-.fighters{display:grid;grid-template-columns:repeat(4,minmax(150px,1fr));gap:12px;margin:16px 0}
+.fighters{display:grid;grid-template-columns:repeat(4,minmax(160px,1fr));gap:12px;margin:16px 0}
 .fighter{border:2px solid #d8b45a77;border-radius:12px;padding:12px;background:#23452bcc;cursor:pointer;text-align:left;position:relative}
 .fighter:hover,.fighter.sel{transform:translateY(-3px);border-color:#fff0a8;outline:3px solid #7ad08c}
-.swatch{height:64px;border-radius:8px;border:2px solid #d8b45a88;margin-bottom:8px}
+.portrait{height:108px;border-radius:8px;border:2px solid #d8b45a88;margin-bottom:8px;overflow:hidden;background:#102413;background-size:cover;background-position:center}
 .fighter b{display:block;color:#fff2a6;font-size:17px}
 .fighter span{display:block;color:#ddd;font:12px Arial;margin-top:4px;text-transform:none}
 button{border:2px solid #fff0b6;border-radius:12px;padding:16px 28px;margin:8px;font-size:22px;font-weight:900;cursor:pointer;color:#1d1308;background:linear-gradient(#fff0b6,#c88a2a);font-family:Georgia,"Times New Roman",serif;text-transform:uppercase;letter-spacing:1px}
+button:disabled{opacity:.45;cursor:not-allowed}
 button:active{transform:translateY(3px)}
-.row{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin:8px}
+.row{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin:8px;align-items:center}
 .diff.sel{outline:4px solid #7ad08c}
+.codeInput{border:2px solid #d8b45a;border-radius:8px;background:#102413;color:#fff;padding:14px;width:130px;font:900 22px monospace;text-align:center;letter-spacing:4px}
+.status{font:14px Arial;color:#d8d7ff}
 .controls{display:none;margin:14px auto 0;grid-template-columns:repeat(2,1fr);gap:10px;text-align:left;max-width:760px;font:14px Arial}
 .controls.show{display:grid}
 .controls div{background:#ffffff14;border:1px solid #ffffff24;padding:10px;border-radius:8px}
@@ -38,18 +42,24 @@ button:active{transform:translateY(3px)}
 .labels{position:absolute;top:50px;left:20px;right:20px;display:none;justify-content:space-between;font-weight:900;color:#f5d889}
 .pop{position:absolute;left:50%;top:88px;transform:translateX(-50%);display:none;color:#fff2a6;font-size:24px}
 .msg{position:absolute;inset:0;display:none;align-items:center;justify-content:center;text-align:center;font-size:clamp(38px,8vw,88px);font-weight:900;color:#f8d96a;background:#0008;pointer-events:auto}
+.loading{position:absolute;inset:0;display:none;align-items:center;justify-content:center;text-align:center;pointer-events:auto;background:#07140cee}
+.loadbox{border:4px ridge #d8b45a;border-radius:18px;background:#102413ee;padding:34px}
+.seed{font-size:clamp(42px,8vw,92px);letter-spacing:8px;color:#fff2a7;font-family:monospace}
+.hint{font:18px Georgia;color:#e7d9b7;text-transform:none}
 @media(max-width:760px){.fighters{grid-template-columns:repeat(2,1fr)}.controls{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
 <canvas id="game"></canvas>
+<canvas id="previewCanvas" width="200" height="140" style="display:none"></canvas>
 <div id="ui">
   <div id="menu" class="menu"><div class="card">
     <h1>Wizards<br>& Warriors 3D</h1>
-    <div class="subtitle">Pick your fighter. Fight the CPU.</div>
+    <div class="subtitle">Pick your fighter. Fight the CPU or host a friend.</div>
     <div id="fighters" class="fighters"></div>
     <button id="playBtn">PLAY</button><button id="controlsBtn">CONTROLS</button>
     <div class="row"><button class="diff" data-d="easy">EASY</button><button class="diff sel" data-d="normal">NORMAL</button><button class="diff" data-d="hard">HARD</button><button class="diff" data-d="nightmare">NIGHTMARE</button></div>
+    <div class="row"><button id="hostBtn">HOST</button><input id="codeInput" class="codeInput" placeholder="CODE" maxlength="6"><button id="joinBtn">JOIN</button><span id="statusText" class="status"></span></div>
     <div id="how" class="controls">
       <div><b>Arrow Keys / WASD</b><br>Move / jump</div>
       <div><b>Z</b><br>Block</div>
@@ -75,7 +85,15 @@ button:active{transform:translateY(3px)}
   <div id="labels" class="labels"><span id="p1name"></span><span id="p2name"></span></div>
   <div id="pop" class="pop"></div>
   <div id="msg" class="msg"></div>
+  <div id="loading" class="loading"><div class="loadbox">
+    <h1>Waiting<br>for Challenger</h1>
+    <div class="hint">Share this 6-digit code:</div>
+    <div id="seedCode" class="seed">000000</div>
+    <div class="hint">They type it next to JOIN and press JOIN.</div>
+    <button id="cancelHostBtn">BACK</button>
+  </div></div>
 </div>
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script type="importmap">
 {
   "imports": {
@@ -89,7 +107,7 @@ import * as THREE from 'three';
 
 // ============================================================================
 // WIZARDS & WARRIORS 3D
-// 2.5D fighter on a fixed combat plane. Three.js renderer. CPU only (v1).
+// 2.5D fighter on a fixed combat plane. Three.js renderer. CPU + multiplayer.
 // ============================================================================
 
 const $ = id => document.getElementById(id);
@@ -101,6 +119,10 @@ const els = {
     fighters: $('fighters'),
     playBtn: $('playBtn'),
     controlsBtn: $('controlsBtn'),
+    hostBtn: $('hostBtn'),
+    joinBtn: $('joinBtn'),
+    codeInput: $('codeInput'),
+    statusText: $('statusText'),
     how: $('how'),
     p1bar: $('p1bar'), p2bar: $('p2bar'),
     p1sup: $('p1sup'), p2sup: $('p2sup'),
@@ -108,7 +130,11 @@ const els = {
     timer: $('timer'),
     p1name: $('p1name'), p2name: $('p2name'),
     pop: $('pop'),
-    msg: $('msg')
+    msg: $('msg'),
+    loading: $('loading'),
+    seedCode: $('seedCode'),
+    cancelHostBtn: $('cancelHostBtn'),
+    previewCanvas: $('previewCanvas')
 };
 
 // Character roster — same 20 from the 2D game.
@@ -156,20 +182,39 @@ const D = {
 const ARENA_W = 8;
 const GRAVITY = 25;
 const JUMP_VEL = 9;
-// Pixels-per-second in 2D were ~200-360. Divide by ~70 to get units/sec here.
+// 2D pixels/sec scaled down for 3D world units.
 const SPEED_SCALE = 1/70;
 
-// Global state
-let scene, camera, renderer, sun, ground;
+const MELEE_KINDS = ['sword', 'shield', 'dagger', 'claw'];
+const isMelee = f => MELEE_KINDS.includes(f.ch.kind);
+
+// Net state shape (set by openRoom):
+//   role: 'cpu' | 'host' | 'join'
+//   code: 6-digit string
+//   ch: BroadcastChannel
+//   peer: PeerJS peer instance
+//   conn: PeerJS data connection
+//   keys: keys snapshot from remote
+//   started: match has begun
+//   joinTimer, inputTimer: setInterval handles
+//   localP2Until: prediction-window deadline (host snap overrides allowed after this)
+//   lastRemoteStamp: most recent host state's timestamp; drops out-of-order packets
+//   lastState: last time host sent a state (rate-limit to NET_STATE_MS)
+let net = { role: 'cpu', ch: null, keys: {} };
+const NET_STATE_MS = 50;
+
+// Three.js + game state
+let scene, camera, renderer, sun;
 let p1, p2;
 let sel = 1, diff = 'normal';
 let keys = {}, q = [];
 let G = { run: 0, over: 0, time: 90, fx: [], paused: 0 };
 let raf = 0, last = 0;
 let endTimer = 0;
+let charPreviews = {};  // id -> data URL
 
 // ============================================================================
-// THREE.JS SETUP
+// THREE.JS SCENE SETUP
 // ============================================================================
 
 function initScene() {
@@ -187,33 +232,24 @@ function initScene() {
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
-    // Lights
     scene.add(new THREE.AmbientLight(0x6d8fc7, 0.55));
     sun = new THREE.DirectionalLight(0xfff0d0, 1.05);
     sun.position.set(6, 12, 7);
     sun.castShadow = true;
     sun.shadow.mapSize.set(1024, 1024);
-    sun.shadow.camera.left = -12;
-    sun.shadow.camera.right = 12;
-    sun.shadow.camera.top = 10;
-    sun.shadow.camera.bottom = -2;
-    sun.shadow.camera.near = 0.5;
-    sun.shadow.camera.far = 30;
+    Object.assign(sun.shadow.camera, { left: -12, right: 12, top: 10, bottom: -2, near: 0.5, far: 30 });
     scene.add(sun);
 
-    // Rim/back light for character readability
     const rim = new THREE.DirectionalLight(0xf5d889, 0.35);
     rim.position.set(-5, 6, -6);
     scene.add(rim);
 
-    // Ground
     const gMat = new THREE.MeshLambertMaterial({ color: 0x274b2d });
-    ground = new THREE.Mesh(new THREE.PlaneGeometry(60, 24), gMat);
+    const ground = new THREE.Mesh(new THREE.PlaneGeometry(60, 24), gMat);
     ground.rotation.x = -Math.PI / 2;
     ground.receiveShadow = true;
     scene.add(ground);
 
-    // Grass tile pattern
     const stripeMat = new THREE.MeshLambertMaterial({ color: 0x385226 });
     for (let x = -28; x <= 28; x += 3.2) {
         const s = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 0.6), stripeMat);
@@ -223,14 +259,12 @@ function initScene() {
         scene.add(s);
     }
 
-    // Back wall: ruined pillars + sky bar
     const pillarMat = new THREE.MeshLambertMaterial({ color: 0x382715 });
     const capMat = new THREE.MeshLambertMaterial({ color: 0xd8b45a });
     for (let x = -10; x <= 10; x += 2.5) {
         const p = new THREE.Mesh(new THREE.BoxGeometry(0.7, 3.6 + (x % 3) * 0.2, 0.7), pillarMat);
         p.position.set(x, 1.8 + (x % 3) * 0.1, -6);
-        p.castShadow = true;
-        p.receiveShadow = true;
+        p.castShadow = true; p.receiveShadow = true;
         scene.add(p);
         const cap = new THREE.Mesh(new THREE.BoxGeometry(1, 0.25, 1), capMat);
         cap.position.set(x, 3.6 + (x % 3) * 0.2 + 0.12, -6);
@@ -238,7 +272,6 @@ function initScene() {
         scene.add(cap);
     }
 
-    // Trees
     const trunkMat = new THREE.MeshLambertMaterial({ color: 0x4f2f1b });
     const leafMat = new THREE.MeshLambertMaterial({ color: 0x6fa85c });
     for (let x = -14; x <= 14; x += 3.7) {
@@ -253,7 +286,6 @@ function initScene() {
         scene.add(leaves);
     }
 
-    // Sky dome — simple gradient via large inverted sphere with vertex colors
     const skyGeo = new THREE.SphereGeometry(40, 16, 12);
     const skyMat = new THREE.ShaderMaterial({
         side: THREE.BackSide,
@@ -273,74 +305,46 @@ function makeWeapon(kind, accent) {
     const accCol = new THREE.Color(accent);
     const accMat = new THREE.MeshLambertMaterial({ color: accCol });
     const steelMat = new THREE.MeshLambertMaterial({ color: 0xf7f7ff });
+    const gripMat = new THREE.MeshLambertMaterial({ color: 0x3a2415 });
 
     if (kind === 'sword') {
         const blade = new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.25, 0.04), steelMat);
-        blade.position.y = 0.62;
-        blade.castShadow = true;
-        g.add(blade);
+        blade.position.y = 0.62; blade.castShadow = true; g.add(blade);
         const guard = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.08, 0.08), accMat);
-        guard.castShadow = true;
-        g.add(guard);
-        const grip = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.25, 0.07), new THREE.MeshLambertMaterial({ color: 0x3a2415 }));
-        grip.position.y = -0.18;
-        grip.castShadow = true;
-        g.add(grip);
+        guard.castShadow = true; g.add(guard);
+        const grip = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.25, 0.07), gripMat);
+        grip.position.y = -0.18; grip.castShadow = true; g.add(grip);
     } else if (kind === 'shield') {
-        // Held by left arm; treat the right hand as having a war hammer too
-        const hammerHandle = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.9, 0.07), new THREE.MeshLambertMaterial({ color: 0x3a2415 }));
-        hammerHandle.position.y = 0.42;
-        hammerHandle.castShadow = true;
-        g.add(hammerHandle);
+        const handle = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.9, 0.07), gripMat);
+        handle.position.y = 0.42; handle.castShadow = true; g.add(handle);
         const head = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.22, 0.3), accMat);
-        head.position.y = 0.95;
-        head.castShadow = true;
-        g.add(head);
+        head.position.y = 0.95; head.castShadow = true; g.add(head);
     } else if (kind === 'staff') {
         const shaft = new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.5, 0.08), accMat);
-        shaft.position.y = 0.7;
-        shaft.castShadow = true;
-        g.add(shaft);
+        shaft.position.y = 0.7; shaft.castShadow = true; g.add(shaft);
         const orb = new THREE.Mesh(new THREE.SphereGeometry(0.16, 12, 10), new THREE.MeshLambertMaterial({ color: accCol, emissive: accCol, emissiveIntensity: 0.4 }));
-        orb.position.y = 1.5;
-        orb.castShadow = true;
-        g.add(orb);
+        orb.position.y = 1.5; orb.castShadow = true; g.add(orb);
     } else if (kind === 'wand') {
         const shaft = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.85, 0.06), accMat);
-        shaft.position.y = 0.4;
-        shaft.castShadow = true;
-        g.add(shaft);
+        shaft.position.y = 0.4; shaft.castShadow = true; g.add(shaft);
         const tip = new THREE.Mesh(new THREE.SphereGeometry(0.12, 10, 8), new THREE.MeshLambertMaterial({ color: accCol, emissive: accCol, emissiveIntensity: 0.6 }));
-        tip.position.y = 0.85;
-        tip.castShadow = true;
-        g.add(tip);
+        tip.position.y = 0.85; tip.castShadow = true; g.add(tip);
     } else if (kind === 'dagger') {
         const blade = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.55, 0.04), accMat);
-        blade.position.y = 0.27;
-        blade.castShadow = true;
-        g.add(blade);
-        const grip = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.18, 0.06), new THREE.MeshLambertMaterial({ color: 0x3a2415 }));
-        grip.position.y = -0.12;
-        grip.castShadow = true;
-        g.add(grip);
+        blade.position.y = 0.27; blade.castShadow = true; g.add(blade);
+        const grip = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.18, 0.06), gripMat);
+        grip.position.y = -0.12; grip.castShadow = true; g.add(grip);
     } else if (kind === 'claw') {
         for (let i = -1; i <= 1; i++) {
             const c = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.45, 0.05), accMat);
-            c.position.set(i * 0.1, 0.22, 0);
-            c.castShadow = true;
-            g.add(c);
+            c.position.set(i * 0.1, 0.22, 0); c.castShadow = true; g.add(c);
         }
     } else if (kind === 'flask') {
         const flask = new THREE.Mesh(new THREE.SphereGeometry(0.18, 12, 10), new THREE.MeshLambertMaterial({ color: accCol, emissive: accCol, emissiveIntensity: 0.3, transparent: true, opacity: 0.85 }));
-        flask.position.y = 0.18;
-        flask.castShadow = true;
-        g.add(flask);
-        const neck = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.15, 0.08), new THREE.MeshLambertMaterial({ color: 0x3a2415 }));
-        neck.position.y = 0.4;
-        neck.castShadow = true;
-        g.add(neck);
+        flask.position.y = 0.18; flask.castShadow = true; g.add(flask);
+        const neck = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.15, 0.08), gripMat);
+        neck.position.y = 0.4; neck.castShadow = true; g.add(neck);
     }
-
     return g;
 }
 
@@ -358,108 +362,70 @@ function buildFighterMesh(ch) {
     const darkMat = new THREE.MeshLambertMaterial({ color: 0x1d1308 });
     const bootMat = new THREE.MeshLambertMaterial({ color: 0x050008 });
 
-    // Torso (chest armor)
     const torso = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.95, 0.4), bodyMat);
-    torso.position.y = 1.05;
-    torso.castShadow = true;
-    root.add(torso);
+    torso.position.y = 1.05; torso.castShadow = true; root.add(torso);
 
-    // Belt
     const belt = new THREE.Mesh(new THREE.BoxGeometry(0.78, 0.12, 0.45), darkMat);
-    belt.position.y = 0.62;
-    belt.castShadow = true;
-    root.add(belt);
+    belt.position.y = 0.62; belt.castShadow = true; root.add(belt);
 
-    // Shoulder trim
     const shoulderL = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.18, 0.45), accentMat);
-    shoulderL.position.set(-0.36, 1.42, 0);
-    shoulderL.castShadow = true;
-    root.add(shoulderL);
+    shoulderL.position.set(-0.36, 1.42, 0); shoulderL.castShadow = true; root.add(shoulderL);
     const shoulderR = shoulderL.clone();
-    shoulderR.position.x = 0.36;
-    root.add(shoulderR);
+    shoulderR.position.x = 0.36; root.add(shoulderR);
 
-    // Head
     const head = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.4, 0.4), skinMat);
-    head.position.y = 1.78;
-    head.castShadow = true;
-    root.add(head);
+    head.position.y = 1.78; head.castShadow = true; root.add(head);
 
-    // Hair / helm (per character)
     addHeadDetail(root, ch, accentMat, darkMat);
 
-    // Eyes — two small dark cubes on the front face
-    const eye = new THREE.MeshLambertMaterial({ color: 0x050008 });
-    const eyeL = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, 0.02), eye);
-    eyeL.position.set(-0.09, 1.82, 0.21);
-    root.add(eyeL);
+    const eyeMat = new THREE.MeshLambertMaterial({ color: 0x050008 });
+    const eyeL = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, 0.02), eyeMat);
+    eyeL.position.set(-0.09, 1.82, 0.21); root.add(eyeL);
     const eyeR = eyeL.clone();
-    eyeR.position.x = 0.09;
-    root.add(eyeR);
+    eyeR.position.x = 0.09; root.add(eyeR);
 
-    // Arms — each one is a Group pivoted at the shoulder so we can rotate
     const armL = new THREE.Group();
     armL.position.set(-0.46, 1.5, 0);
     const armLMesh = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.7, 0.18), bodyMat);
-    armLMesh.position.y = -0.32;
-    armLMesh.castShadow = true;
-    armL.add(armLMesh);
+    armLMesh.position.y = -0.32; armLMesh.castShadow = true; armL.add(armLMesh);
     const handL = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.18, 0.2), skinMat);
-    handL.position.y = -0.72;
-    handL.castShadow = true;
-    armL.add(handL);
+    handL.position.y = -0.72; handL.castShadow = true; armL.add(handL);
     root.add(armL);
 
     const armR = new THREE.Group();
     armR.position.set(0.46, 1.5, 0);
     const armRMesh = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.7, 0.18), bodyMat);
-    armRMesh.position.y = -0.32;
-    armRMesh.castShadow = true;
-    armR.add(armRMesh);
+    armRMesh.position.y = -0.32; armRMesh.castShadow = true; armR.add(armRMesh);
     const handR = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.18, 0.2), skinMat);
-    handR.position.y = -0.72;
-    handR.castShadow = true;
-    armR.add(handR);
+    handR.position.y = -0.72; handR.castShadow = true; armR.add(handR);
     root.add(armR);
 
-    // Weapon — parented to right arm so it follows the swing
     const weapon = makeWeapon(ch.kind, ch.accent);
     weapon.position.y = -0.78;
     armR.add(weapon);
 
-    // Shield (only for shield-kind, parented to left arm)
     let shield = null;
     if (ch.kind === 'shield') {
         shield = new THREE.Group();
         const plate = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.7, 0.06), accentMat);
-        plate.castShadow = true;
-        shield.add(plate);
+        plate.castShadow = true; shield.add(plate);
         const boss = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.18, 0.08), bodyMat);
-        boss.position.z = 0.05;
-        shield.add(boss);
+        boss.position.z = 0.05; shield.add(boss);
         shield.position.set(0, -0.55, 0.2);
         armL.add(shield);
     }
 
-    // Legs — each is a Group pivoted at the hip
     const legL = new THREE.Group();
     legL.position.set(-0.18, 0.55, 0);
     const legLMesh = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.55, 0.22), darkMat);
-    legLMesh.position.y = -0.28;
-    legLMesh.castShadow = true;
-    legL.add(legLMesh);
+    legLMesh.position.y = -0.28; legLMesh.castShadow = true; legL.add(legLMesh);
     const bootL = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.12, 0.32), bootMat);
-    bootL.position.y = -0.6;
-    bootL.position.z = 0.05;
-    bootL.castShadow = true;
-    legL.add(bootL);
+    bootL.position.y = -0.6; bootL.position.z = 0.05; bootL.castShadow = true; legL.add(bootL);
     root.add(legL);
-
     const legR = legL.clone();
     legR.position.x = 0.18;
     root.add(legR);
 
-    // Cape (for staff/shield/wand)
     let cape = null;
     if (['staff', 'shield', 'wand'].includes(ch.kind)) {
         cape = new THREE.Mesh(
@@ -467,34 +433,23 @@ function buildFighterMesh(ch) {
             new THREE.MeshLambertMaterial({ color: accentCol, side: THREE.DoubleSide, transparent: true, opacity: 0.85 })
         );
         cape.position.set(0, 1.0, -0.22);
-        cape.castShadow = true;
-        root.add(cape);
+        cape.castShadow = true; root.add(cape);
     }
 
-    // Block aura — only visible when blocking
     const aura = new THREE.Mesh(
         new THREE.SphereGeometry(0.95, 16, 12),
         new THREE.MeshBasicMaterial({ color: accentCol, transparent: true, opacity: 0, depthWrite: false })
     );
-    aura.position.y = 1.0;
-    root.add(aura);
+    aura.position.y = 1.0; root.add(aura);
 
-    // Stash references for animation
     root.userData = { torso, head, armL, armR, legL, legR, weapon, shield, cape, aura };
-
     return root;
 }
 
 function addHeadDetail(root, ch, accentMat, darkMat) {
-    // Quick character-flavored headwear, mirroring the 2D version's sketches.
-    const h = new THREE.Group();
-    h.position.y = 0;
-    root.add(h);
     const make = (geom, mat, x, y, z) => {
         const m = new THREE.Mesh(geom, mat);
-        m.position.set(x, y, z);
-        m.castShadow = true;
-        h.add(m);
+        m.position.set(x, y, z); m.castShadow = true; root.add(m);
         return m;
     };
     const accent = new THREE.Color(ch.accent);
@@ -517,30 +472,72 @@ function addHeadDetail(root, ch, accentMat, darkMat) {
         make(new THREE.BoxGeometry(0.5, 0.06, 0.06), darkMat, 0, 1.74, 0.2);
     } else if (ch.name === 'Grum') {
         make(new THREE.BoxGeometry(0.5, 0.12, 0.5), new THREE.MeshLambertMaterial({ color: 0xd9a05f }), 0, 2.04, 0);
-        make(new THREE.BoxGeometry(0.34, 0.16, 0.34), accentMat, 0, 1.9, 0.16); // big beard
+        make(new THREE.BoxGeometry(0.34, 0.16, 0.34), accentMat, 0, 1.9, 0.16);
     } else if (ch.name === 'Ravenna') {
         make(new THREE.BoxGeometry(0.46, 0.32, 0.46), new THREE.MeshLambertMaterial({ color: 0x051426 }), 0, 2.18, 0);
         make(new THREE.BoxGeometry(0.08, 0.18, 0.04), new THREE.MeshLambertMaterial({ color: 0x00ffff, emissive: 0x00ffff, emissiveIntensity: 0.7 }), 0, 2.38, 0.2);
     } else if (ch.name === 'Sythra') {
-        // Horns
         make(new THREE.BoxGeometry(0.1, 0.22, 0.1), accentMat, -0.18, 2.1, 0);
         make(new THREE.BoxGeometry(0.1, 0.22, 0.1), accentMat, 0.18, 2.1, 0);
     } else if (ch.name === 'Pip') {
-        // Tiny crown / sparkle
         make(new THREE.BoxGeometry(0.3, 0.08, 0.3), accentMat, 0, 2.02, 0);
         make(new THREE.SphereGeometry(0.05, 8, 6), new THREE.MeshLambertMaterial({ color: accent, emissive: accent, emissiveIntensity: 0.7 }), 0, 2.12, 0);
     } else if (ch.name === 'Kael') {
-        // Demon helm with horns
         make(new THREE.BoxGeometry(0.46, 0.22, 0.46), darkMat, 0, 2.08, 0);
         make(new THREE.BoxGeometry(0.06, 0.16, 0.06), accentMat, -0.18, 2.22, 0);
         make(new THREE.BoxGeometry(0.06, 0.16, 0.06), accentMat, 0.18, 2.22, 0);
     } else if (ch.name === 'Malachai') {
-        // Priest hood
         make(new THREE.BoxGeometry(0.5, 0.34, 0.5), new THREE.MeshLambertMaterial({ color: 0x2d143e }), 0, 2.12, 0);
     } else {
-        // Generic accent band
         make(new THREE.BoxGeometry(0.44, 0.06, 0.44), accentMat, 0, 2.02, 0);
     }
+}
+
+// ============================================================================
+// CHARACTER PREVIEWS — render each fighter once into a small offscreen scene
+// and snapshot to a data URL. Used as menu card backgrounds.
+// ============================================================================
+
+function renderCharacterPreviews() {
+    const w = 200, h = 140;
+    const prevRenderer = new THREE.WebGLRenderer({ canvas: els.previewCanvas, antialias: true, alpha: true, preserveDrawingBuffer: true });
+    prevRenderer.setSize(w, h);
+    prevRenderer.setPixelRatio(window.devicePixelRatio || 1);
+
+    const prevScene = new THREE.Scene();
+    prevScene.add(new THREE.AmbientLight(0x9aaecf, 0.7));
+    const prevLight = new THREE.DirectionalLight(0xffe2ad, 1.1);
+    prevLight.position.set(2, 4, 3);
+    prevScene.add(prevLight);
+    const prevCam = new THREE.PerspectiveCamera(34, w / h, 0.1, 20);
+    prevCam.position.set(0, 1.2, 4.5);
+    prevCam.lookAt(0, 1.05, 0);
+
+    // Backdrop tile so the preview is readable
+    const bg = new THREE.Mesh(
+        new THREE.PlaneGeometry(4, 4),
+        new THREE.MeshBasicMaterial({ color: 0x102413 })
+    );
+    bg.position.z = -1.5;
+    prevScene.add(bg);
+
+    for (const ch of chars) {
+        const mesh = buildFighterMesh(ch);
+        mesh.rotation.y = -0.3;
+        prevScene.add(mesh);
+        prevRenderer.render(prevScene, prevCam);
+        try {
+            charPreviews[ch.id] = els.previewCanvas.toDataURL('image/png');
+        } catch (e) {
+            charPreviews[ch.id] = null;
+        }
+        prevScene.remove(mesh);
+        disposeMesh(mesh, /*alreadyRemoved*/true);
+    }
+
+    prevRenderer.dispose();
+    bg.geometry.dispose();
+    bg.material.dispose();
 }
 
 // ============================================================================
@@ -568,7 +565,7 @@ function fighter(x, ch, enemy = 0) {
     };
 }
 
-function disposeMesh(root) {
+function disposeMesh(root, alreadyRemoved = false) {
     if (!root) return;
     root.traverse(obj => {
         if (obj.geometry) obj.geometry.dispose();
@@ -577,7 +574,7 @@ function disposeMesh(root) {
             else obj.material.dispose();
         }
     });
-    scene.remove(root);
+    if (!alreadyRemoved && root.parent) root.parent.remove(root);
 }
 
 // ============================================================================
@@ -585,7 +582,6 @@ function disposeMesh(root) {
 // ============================================================================
 
 function cl(v, a, b) { return Math.max(a, Math.min(b, v)); }
-function rr(a, b) { return a + Math.random() * (b - a); }
 
 function spendSta(f, n) {
     if (f.sta < n) {
@@ -598,19 +594,14 @@ function spendSta(f, n) {
     return true;
 }
 
-// 2D AABB overlap in XY plane (Z is fixed)
 function rectsOverlap(a, b) {
     return a.x < b.x + b.w && a.x + a.w > b.x &&
            a.y < b.y + b.h && a.y + a.h > b.y;
 }
 
-// Hitbox of a fighter in world space (origin at feet center)
 function fighterBox(f) {
     return { x: f.x - f.w / 2, y: f.y, w: f.w, h: f.h };
 }
-
-const MELEE_KINDS = ['sword', 'shield', 'dagger', 'claw'];
-function isMelee(f) { return MELEE_KINDS.includes(f.ch.kind); }
 
 function meleeProfile(f) {
     return {
@@ -641,17 +632,13 @@ function attack(f, type) {
         };
         f.cd = heavy ? p.heavyCd : p.lightCd;
     } else {
-        // Ranged characters (staff/wand/flask): a basic "shot" as the light attack;
-        // heavy is a stronger close swing.
         if (!spendSta(f, heavy ? 22 : 10)) return;
         if (!heavy) {
             G.fx.push(makeShot(f));
             f.cd = 0.5;
             f.atk = { t: 0.18, a: 0.12, dur: 0.18, hit: 1, ranged: 1 };
         } else {
-            f.atk = {
-                t: 0.34, a: 0.2, reach: 0.75, dmg: 14, knock: 3.2, hit: 0, dur: 0.34
-            };
+            f.atk = { t: 0.34, a: 0.2, reach: 0.75, dmg: 14, knock: 3.2, hit: 0, dur: 0.34, melee: 1 };
             f.cd = 0.52;
         }
     }
@@ -694,7 +681,6 @@ function jumpFighter(f) {
 
 function damage(t, n, k) {
     if (t.blk > 0) {
-        // Block reduces damage. Shield blocks more than other kinds; front-side better.
         const shieldBonus = t.ch.kind === 'shield' ? 0.5 : 1;
         n *= 0.28 * shieldBonus;
         k *= 0.4 * shieldBonus;
@@ -706,32 +692,27 @@ function damage(t, n, k) {
             flash('Guard Break!');
         }
     }
-    // Scale by attacker's atk modifier and defender's def modifier
     const attackerCh = (t === p1) ? p2.ch : p1.ch;
     n *= attackerCh.atk;
     n /= t.ch.def;
-    // Difficulty: CPU does scaled damage to player
-    if (t === p1) n *= D[diff].dmg;
+    if (t === p1 && net.role === 'cpu') n *= D[diff].dmg;
     t.hp = Math.max(0, t.hp - n);
     t.vx += k;
     t.sup = cl(t.sup + n * 0.35, 0, 100);
 }
 
 function resolve() {
-    // Melee hits
     for (const [a, b] of [[p1, p2], [p2, p1]]) {
         if (a.atk && !a.atk.hit && a.atk.melee && a.atk.a > 0) {
             const reach = a.atk.reach;
             const ax = a.dir > 0 ? a.x + a.w / 2 : a.x - a.w / 2 - reach;
             const swing = { x: ax, y: a.y + 0.3, w: reach, h: a.h * 0.7 };
-            const target = fighterBox(b);
-            if (rectsOverlap(swing, target)) {
+            if (rectsOverlap(swing, fighterBox(b))) {
                 damage(b, a.atk.dmg, a.dir * a.atk.knock);
                 a.atk.hit = 1;
             }
         }
     }
-    // Shots
     for (const s of G.fx) {
         if (s.kind !== 'shot' || s.dead) continue;
         const tgt = s.own === p1 ? p2 : p1;
@@ -749,11 +730,9 @@ function resolve() {
 
 function applyControl(f, ks) {
     if (f.tired > 0) f.vx *= 0.62;
-    const moving = ks.left || ks.right;
-    if (ks.left) { f.vx = -f.ch.speed * SPEED_SCALE * f.ch.spd; f.dir = -1; }
+    if (ks.left)       { f.vx = -f.ch.speed * SPEED_SCALE * f.ch.spd; f.dir = -1; }
     else if (ks.right) { f.vx = f.ch.speed * SPEED_SCALE * f.ch.spd; f.dir = 1; }
-    else f.vx *= 0.6; // ground friction (we'll keep additional decay in phys for air)
-
+    else f.vx *= 0.6;
     if (ks.up && f.on) jumpFighter(f);
 }
 
@@ -763,13 +742,10 @@ function phys(f, dt) {
     f.tired = Math.max(0, f.tired - dt);
     const acting = !!f.atk || !!f.blk;
     f.sta = cl(f.sta + dt * (acting ? 8 : 34), 0, f.maxSta);
-
     if (f.atk) {
-        f.atk.t -= dt;
-        f.atk.a -= dt;
+        f.atk.t -= dt; f.atk.a -= dt;
         if (f.atk.t <= 0) f.atk = null;
     }
-
     f.vy -= GRAVITY * dt;
     f.x += f.vx * dt;
     f.y += f.vy * dt;
@@ -788,7 +764,6 @@ function ai(cpu) {
     const side = dist < 0.05 ? cpu.dir : Math.sign(d);
     cpu.dir = side < 0 ? -1 : 1;
     cpu.ai -= 1 / 60;
-
     const closeRange = melee ? 1.2 : 1.6;
     const farRange = 2.2;
 
@@ -798,16 +773,13 @@ function ai(cpu) {
 
     if (cpu.cd <= 0 && cpu.ai <= 0) {
         cpu.ai = o.think;
-        if (dist < closeRange) {
-            attack(cpu, Math.random() < 0.65 ? 'light' : 'heavy');
-        } else if (!melee && Math.random() < 0.55) {
-            attack(cpu, 'light'); // shoot
-        }
+        if (dist < closeRange) attack(cpu, Math.random() < 0.65 ? 'light' : 'heavy');
+        else if (!melee && Math.random() < 0.55) attack(cpu, 'light');
     }
 }
 
 // ============================================================================
-// ANIMATION — rotate limbs based on state
+// ANIMATION
 // ============================================================================
 
 function animate(f, dt) {
@@ -818,7 +790,6 @@ function animate(f, dt) {
     const swingAmp = running ? 0.9 : 0.18;
     const phase = f.animPhase * swingFreq;
 
-    // Legs swing back and forth
     u.legL.rotation.x = Math.sin(phase) * swingAmp;
     u.legR.rotation.x = -Math.sin(phase) * swingAmp;
     if (!f.on) {
@@ -826,27 +797,21 @@ function animate(f, dt) {
         u.legR.rotation.x = 0.4;
     }
 
-    // Arms swing opposite when running, lift when attacking
     const armPhase = -Math.sin(phase) * swingAmp * 0.7;
     u.armL.rotation.x = armPhase;
     u.armR.rotation.x = -armPhase;
 
-    if (f.atk) {
+    if (f.atk && f.atk.melee) {
         const t = 1 - cl(f.atk.t / (f.atk.dur || 0.3), 0, 1);
         const arc = Math.sin(t * Math.PI);
-        // Big swing from shoulder
         u.armR.rotation.x = -1.4 + arc * 2.2;
         u.armR.rotation.z = -0.2 - arc * 0.6;
-        if (f.atk.melee) {
-            // Slight body lean into the strike
-            f.mesh.rotation.z = arc * 0.18 * -f.dir;
-        }
+        f.mesh.rotation.z = arc * 0.18 * -f.dir;
     } else {
         f.mesh.rotation.z *= 0.85;
+        u.armR.rotation.z *= 0.85;
     }
 
-    // Block: raise shield arm forward, show aura
-    if (u.shield) u.shield.visible = true;
     if (f.blk > 0) {
         u.armL.rotation.x = -1.5;
         u.armL.rotation.z = 0.3;
@@ -855,22 +820,17 @@ function animate(f, dt) {
         if (u.aura) u.aura.material.opacity *= 0.85;
     }
 
-    // Tired wobble
     if (f.tired > 0) {
         f.mesh.rotation.z += Math.sin(performance.now() / 80) * 0.04;
     }
 
-    // Cape sway
     if (u.cape) {
         u.cape.rotation.x = 0.15 + Math.sin(f.animPhase * 3) * 0.08 + (running ? -0.18 : 0);
     }
 
-    // Position on stage
     f.mesh.position.x = f.x;
     f.mesh.position.y = f.y;
     f.mesh.position.z = 0;
-
-    // Face the right direction (player 1 looks +X, player 2 -X)
     f.mesh.rotation.y = f.dir > 0 ? 0 : Math.PI;
 }
 
@@ -917,8 +877,11 @@ function makeCards() {
         const d = document.createElement('div');
         d.className = 'fighter' + (i === sel ? ' sel' : '');
         d.onclick = () => { sel = i; makeCards(); };
+        const bg = charPreviews[ch.id]
+            ? `background-image:url('${charPreviews[ch.id]}')`
+            : `background:linear-gradient(135deg, ${ch.color}, ${ch.accent})`;
         d.innerHTML =
-            '<div class="swatch" style="background:linear-gradient(135deg,' + ch.color + ',' + ch.accent + ')"></div>' +
+            '<div class="portrait" style="' + bg + '"></div>' +
             '<b>' + ch.name + '</b>' +
             '<span>' + ch.title + '</span>' +
             '<span>Weapon: ' + ch.weapon + '</span>';
@@ -933,15 +896,306 @@ function setDiff(v) {
 }
 
 // ============================================================================
-// GAME FLOW
+// MULTIPLAYER — BroadcastChannel for same-machine + PeerJS WebRTC cross-device.
+// Host is authoritative. Joiner predicts p2 locally and host snap overrides.
+// Mirrors the structure of the 2D version's net layer.
 // ============================================================================
 
-function startGame() {
-    // Tear down any prior fighters
+function makeCode() {
+    return String(Math.floor(Date.now() / 1000) % 1000000).padStart(6, '0');
+}
+
+function fighterSnap(f) {
+    if (!f) return null;
+    return {
+        x: f.x, y: f.y, vx: f.vx, vy: f.vy,
+        dir: f.dir, hp: f.hp, maxHp: f.maxHp,
+        sup: f.sup, sta: f.sta, maxSta: f.maxSta, tired: f.tired,
+        chId: f.ch.id, enemy: f.enemy,
+        on: f.on, cd: f.cd, blk: f.blk,
+        atk: f.atk ? { ...f.atk } : null
+    };
+}
+
+function applyFighterSnap(target, snap) {
+    if (!target || !snap) return target;
+    const ch = chars[snap.chId] || target.ch;
+    Object.assign(target, snap, { ch });
+    return target;
+}
+
+function shotSnap(s) {
+    return { x: s.x, y: s.y, vx: s.vx, vy: s.vy, r: s.r, dmg: s.dmg, life: s.life, ownerSide: s.own === p1 ? 1 : 2, accent: s.own.ch.accent };
+}
+
+function netG() {
+    return {
+        run: G.run,
+        over: G.over,
+        time: G.time,
+        shots: (G.fx || []).filter(s => s.kind === 'shot' && !s.dead).slice(-24).map(shotSnap)
+    };
+}
+
+function applyNetG(snap) {
+    if (!snap) return;
+    G.run = snap.run;
+    G.over = snap.over;
+    G.time = snap.time;
+
+    // Rebuild shot meshes — cheap because we cap at 24
+    for (const s of G.fx) disposeMesh(s.mesh);
+    G.fx = [];
+    for (const sn of (snap.shots || [])) {
+        const accent = new THREE.Color(sn.accent || '#fff2a7');
+        const mesh = new THREE.Mesh(
+            new THREE.SphereGeometry(sn.r || 0.18, 10, 8),
+            new THREE.MeshLambertMaterial({ color: accent, emissive: accent, emissiveIntensity: 0.8 })
+        );
+        mesh.position.set(sn.x, sn.y, 0);
+        scene.add(mesh);
+        G.fx.push({
+            kind: 'shot',
+            x: sn.x, y: sn.y, vx: sn.vx, vy: sn.vy,
+            r: sn.r, dmg: sn.dmg, life: sn.life,
+            own: sn.ownerSide === 1 ? p1 : p2,
+            mesh
+        });
+    }
+}
+
+function inputKeys() {
+    return {
+        left: !!(keys.arrowleft || keys.a),
+        right: !!(keys.arrowright || keys.d),
+        up: !!(keys.arrowup || keys.w),
+        down: !!(keys.arrowdown || keys.s),
+        z: !!keys.z, v: !!keys.v, x: !!keys.x
+    };
+}
+
+function send(o) {
+    if (!o.id) o.id = net.role + '-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6);
+    if (net.conn && net.conn.open) {
+        try { net.conn.send(o); } catch (e) {}
+    }
+    if (net.ch) net.ch.postMessage(o);
+}
+
+function sendJoin() {
+    send({ type: 'join', sel });
+}
+
+function sendInput(press) {
+    if (net.role !== 'join') return;
+    net.localP2Until = Date.now() + 450;
+    send({ type: 'input', sel, keys: inputKeys(), press: press || '', p2: fighterSnap(p2) });
+}
+
+function sendState() {
+    if (net.role !== 'host') return;
+    const now = performance.now();
+    if (now - (net.lastState || 0) < NET_STATE_MS) return;
+    net.lastState = now;
+    send({ type: 'state', G: netG(), p1: fighterSnap(p1), p2: fighterSnap(p2), stamp: Date.now() });
+}
+
+function openRoom(code, role) {
+    closeRoom();
+    net = {
+        role, code,
+        ch: new BroadcastChannel('ww3d-' + code),
+        peer: null, conn: null,
+        keys: {}, started: false,
+        joinTimer: null, inputTimer: null,
+        seen: {},
+        localP2Until: 0, lastState: 0, lastRemoteStamp: 0
+    };
+    net.ch.onmessage = e => onNet(e.data);
+    els.statusText.textContent = (role === 'host' ? 'HOST CODE: ' : 'JOINED CODE: ') + code;
+    setupPeerRoom(code, role);
+}
+
+function closeRoom() {
+    if (net.joinTimer) clearInterval(net.joinTimer);
+    if (net.inputTimer) clearInterval(net.inputTimer);
+    if (net.conn) { try { net.conn.close(); } catch (e) {} }
+    if (net.ch) net.ch.close();
+    if (net.peer) net.peer.destroy();
+    net = { role: 'cpu', ch: null, keys: {} };
+}
+
+function setupPeerRoom(code, role) {
+    if (typeof window.Peer === 'undefined') {
+        els.statusText.textContent += ' | server offline, local only';
+        return;
+    }
+    try {
+        const peerId = role === 'host' ? 'ww3d-' + code : undefined;
+        net.peer = new window.Peer(peerId, { host: '0.peerjs.com', port: 443, path: '/', secure: true });
+        net.peer.on('open', () => {
+            if (role === 'host') els.statusText.textContent = 'HOST CODE: ' + code + ' | ONLINE';
+            else {
+                els.statusText.textContent = 'JOINING ' + code + ' | ONLINE';
+                attachPeerConnection(net.peer.connect('ww3d-' + code, { reliable: true }));
+            }
+        });
+        net.peer.on('connection', conn => attachPeerConnection(conn));
+        net.peer.on('error', err => {
+            els.statusText.textContent = (role === 'host' ? 'HOST CODE: ' : 'JOINED CODE: ') + code + ' | local fallback';
+            console.warn('Peer error', err);
+        });
+    } catch (err) {
+        els.statusText.textContent += ' | local fallback';
+        console.warn('Peer setup failed', err);
+    }
+}
+
+function attachPeerConnection(conn) {
+    if (!conn) return;
+    if (net.conn && net.conn !== conn) {
+        try { net.conn.close(); } catch (e) {}
+    }
+    net.conn = conn;
+    conn.on('open', () => {
+        els.statusText.textContent = (net.role === 'host' ? 'CONNECTED HOST ' : 'CONNECTED JOIN ') + net.code;
+        if (net.role === 'join') sendJoin();
+        if (net.role === 'host' && net.started) {
+            send({ type: 'state', G: netG(), p1: fighterSnap(p1), p2: fighterSnap(p2), stamp: Date.now() });
+        }
+    });
+    conn.on('data', data => onNet(data));
+    conn.on('close', () => {
+        if (net.conn === conn) net.conn = null;
+        if (net.code) els.statusText.textContent = 'DISCONNECTED ' + net.code;
+    });
+    conn.on('error', err => console.warn('Peer data error', err));
+}
+
+function onNet(m) {
+    if (!m || !m.type) return;
+    if (m.id) {
+        if (net.seen && net.seen[m.id]) return;
+        if (net.seen) net.seen[m.id] = 1;
+    }
+
+    if (net.role === 'host' && m.type === 'join') {
+        if (!net.started) {
+            net.started = true;
+            els.loading.style.display = 'none';
+            startMatchAsHost(m.sel);
+        }
+        send({ type: 'state', G: netG(), p1: fighterSnap(p1), p2: fighterSnap(p2), stamp: Date.now() });
+    }
+
+    if (net.role === 'host' && m.type === 'input') {
+        net.keys = m.keys || {};
+        if (p2 && m.p2) {
+            // Trust joiner's reported position only within a small window so the host stays authoritative
+            const dt = 0;
+            applyFighterSnap(p2, { ...m.p2, hp: p2.hp, sup: p2.sup, sta: p2.sta });
+        }
+        if (m.press) q.push({ for: 'p2', k: m.press });
+    }
+
+    if (net.role === 'join' && m.type === 'state') {
+        if (m.stamp && net.lastRemoteStamp && m.stamp < net.lastRemoteStamp) return;
+        net.lastRemoteStamp = m.stamp || Date.now();
+        const firstState = !net.started;
+        net.started = true;
+        if (net.joinTimer) { clearInterval(net.joinTimer); net.joinTimer = null; }
+        const localP2 = p2;
+        const localKeys = inputKeys();
+        const keepLocalP2 = localP2 && (Date.now() < (net.localP2Until || 0) || localKeys.left || localKeys.right || localKeys.up);
+        applyNetG(m.G);
+        if (!p1) p1 = makeRemoteFighter(m.p1.chId, false, m.p1);
+        else applyFighterSnap(p1, m.p1);
+        if (!p2) p2 = makeRemoteFighter(m.p2.chId, true, m.p2);
+        else if (keepLocalP2) {
+            applyFighterSnap(p2, { ...m.p2, x: localP2.x, y: localP2.y, vx: localP2.vx, vy: localP2.vy, dir: localP2.dir, on: localP2.on, cd: localP2.cd, blk: localP2.blk, atk: localP2.atk });
+        } else {
+            applyFighterSnap(p2, m.p2);
+        }
+        els.p1name.textContent = p1.ch.name + ' (Host)';
+        els.p2name.textContent = p2.ch.name + ' (You)';
+        bars();
+        if (firstState) enterMatchUI();
+        if (G.over) {
+            els.msg.innerHTML = (p1.hp === p2.hp ? 'DRAW' : (p1.hp > p2.hp ? p1.ch.name : p2.ch.name) + ' WINS') +
+                '<br><span style="font-size:22px;color:#fff">returning to menu</span>';
+            els.msg.style.display = 'flex';
+        }
+    }
+
+    if (m.type === 'home') showMenu();
+}
+
+function makeRemoteFighter(chId, enemy, snap) {
+    const ch = chars[chId] || chars[0];
+    const f = fighter(enemy ? 3 : -3, ch, enemy ? 1 : 0);
+    if (snap) applyFighterSnap(f, snap);
+    return f;
+}
+
+function hostGame() {
+    const c = makeCode();
+    openRoom(c, 'host');
+    els.seedCode.textContent = c;
+    els.menu.style.display = 'none';
+    els.loading.style.display = 'flex';
+    els.statusText.textContent = 'HOSTING ' + c;
+}
+
+function joinGame() {
+    const c = els.codeInput.value.trim();
+    if (!/^[0-9]{6}$/.test(c)) {
+        els.statusText.textContent = 'ENTER 6 DIGITS';
+        return;
+    }
+    openRoom(c, 'join');
+    els.statusText.textContent = 'JOINING ' + c;
+    sendJoin();
+    net.joinTimer = setInterval(sendJoin, 500);
+    net.inputTimer = setInterval(() => sendInput(''), 33);
+}
+
+function startMatchAsHost(joinerSel) {
     if (p1) disposeMesh(p1.mesh);
     if (p2) disposeMesh(p2.mesh);
     for (const s of G.fx) disposeMesh(s.mesh);
 
+    G = { run: 1, over: 0, time: 90, fx: [], paused: 0 };
+    keys = {}; q = []; net.keys = {};
+
+    p1 = fighter(-3, chars[sel]);
+    p2 = fighter(3, chars[joinerSel] || chars[(sel + 1) % chars.length], 1);
+
+    els.p1name.textContent = p1.ch.name + ' (You — Host)';
+    els.p2name.textContent = p2.ch.name + ' (Challenger)';
+    enterMatchUI();
+}
+
+function enterMatchUI() {
+    els.menu.style.display = 'none';
+    els.loading.style.display = 'none';
+    els.msg.style.display = 'none';
+    els.hud.style.display = 'flex';
+    els.labels.style.display = 'flex';
+    bars();
+    cancelAnimationFrame(raf);
+    last = performance.now();
+    raf = requestAnimationFrame(loop);
+}
+
+// ============================================================================
+// GAME FLOW — CPU
+// ============================================================================
+
+function startGame() {
+    closeRoom();
+    if (p1) disposeMesh(p1.mesh);
+    if (p2) disposeMesh(p2.mesh);
+    for (const s of G.fx) disposeMesh(s.mesh);
     G = { run: 1, over: 0, time: 90, fx: [], paused: 0 };
     keys = {}; q = [];
 
@@ -953,15 +1207,7 @@ function startGame() {
 
     els.p1name.textContent = p1.ch.name + ' — ' + p1.ch.title;
     els.p2name.textContent = p2.ch.name + ' — ' + p2.ch.title + ' (' + diff + ')';
-    els.menu.style.display = 'none';
-    els.msg.style.display = 'none';
-    els.hud.style.display = 'flex';
-    els.labels.style.display = 'flex';
-    bars();
-
-    cancelAnimationFrame(raf);
-    last = performance.now();
-    raf = requestAnimationFrame(loop);
+    enterMatchUI();
 }
 
 function showMenu() {
@@ -971,10 +1217,13 @@ function showMenu() {
     for (const s of G.fx) disposeMesh(s.mesh);
     G.fx = [];
     clearTimeout(endTimer);
+    closeRoom();
     els.menu.style.display = 'flex';
     els.hud.style.display = 'none';
     els.labels.style.display = 'none';
     els.msg.style.display = 'none';
+    els.loading.style.display = 'none';
+    els.statusText.textContent = '';
     makeCards();
 }
 
@@ -986,14 +1235,21 @@ function endGame() {
     els.msg.innerHTML = (tie ? 'DRAW' : winner.ch.name + ' WINS') +
         '<br><span style="font-size:22px;color:#fff">returning to menu</span>';
     els.msg.style.display = 'flex';
-    endTimer = setTimeout(showMenu, 2600);
+    if (net.role === 'host') {
+        send({ type: 'state', G: netG(), p1: fighterSnap(p1), p2: fighterSnap(p2), stamp: Date.now() });
+    }
+    endTimer = setTimeout(() => {
+        if (net.role === 'host') send({ type: 'home' });
+        showMenu();
+    }, 2600);
 }
 
 // ============================================================================
-// CAMERA — soft follow that frames both fighters
+// CAMERA
 // ============================================================================
 
 function updateCamera(dt) {
+    if (!p1 || !p2) return;
     const cx = (p1.x + p2.x) / 2;
     const dist = Math.abs(p1.x - p2.x);
     const zoomTarget = 9 + cl(dist - 4, 0, 8) * 0.6;
@@ -1007,33 +1263,57 @@ function updateCamera(dt) {
 // MAIN LOOP
 // ============================================================================
 
-function readKeys() {
-    return {
-        left: !!(keys.arrowleft || keys.a),
-        right: !!(keys.arrowright || keys.d),
-        up: !!(keys.arrowup || keys.w),
-        down: !!(keys.arrowdown || keys.s),
-        z: !!keys.z,
-        v: !!keys.v,
-        x: !!keys.x
-    };
-}
-
-function processQueue(f) {
-    while (q.length) {
-        const k = q.shift();
+function processQueue(side) {
+    // side = 'p1' or 'p2'. Read action presses queued by the appropriate input source.
+    const f = side === 'p1' ? p1 : p2;
+    const remaining = [];
+    for (const item of q) {
+        const ownerSide = typeof item === 'string' ? 'p1' : item.for;
+        const k = typeof item === 'string' ? item : item.k;
+        if (ownerSide !== side) { remaining.push(item); continue; }
         if (k === 'z') block(f);
         else if (k === 'v') attack(f, 'light');
         else if (k === 'x') attack(f, 'heavy');
     }
+    q = remaining;
 }
 
 function update(dt) {
     if (!G.run || G.over || G.paused) return;
-    const ks = readKeys();
-    applyControl(p1, ks);
-    processQueue(p1);
-    ai(p2);
+
+    if (net.role === 'join') {
+        // Joiner: control p2 locally for responsiveness; host will correct on next state
+        const ks = inputKeys();
+        if (p2) {
+            applyControl(p2, ks);
+            processQueue('p2');
+            phys(p2, dt);
+            animate(p2, dt);
+        }
+        if (p1) animate(p1, dt);
+        updateFx(dt);
+        bars();
+        els.timer.textContent = Math.max(0, Math.ceil(G.time));
+        updateCamera(dt);
+        return;
+    }
+
+    // Host or single-player: full simulation
+    const p1Keys = inputKeys();
+    applyControl(p1, p1Keys);
+    processQueue('p1');
+
+    if (net.role === 'host') {
+        const p2Keys = {
+            left: !!net.keys.left, right: !!net.keys.right, up: !!net.keys.up,
+            z: !!net.keys.z, v: !!net.keys.v, x: !!net.keys.x
+        };
+        applyControl(p2, p2Keys);
+        processQueue('p2');
+    } else {
+        ai(p2);
+    }
+
     phys(p1, dt);
     phys(p2, dt);
     resolve();
@@ -1044,6 +1324,7 @@ function update(dt) {
     animate(p1, dt);
     animate(p2, dt);
     updateCamera(dt);
+
     if (p1.hp <= 0 || p2.hp <= 0 || G.time <= 0) endGame();
 }
 
@@ -1052,6 +1333,7 @@ function loop(now) {
     const dt = Math.min(0.033, (now - last) / 1000 || 1 / 60);
     last = now;
     update(dt);
+    if (net.role === 'host') sendState();
     renderer.render(scene, camera);
     raf = requestAnimationFrame(loop);
 }
@@ -1063,22 +1345,34 @@ function loop(now) {
 function bindInput() {
     addEventListener('keydown', e => {
         const k = e.key.toLowerCase();
-        if (!keys[k]) {
-            // queue press-once actions
-            if (['z', 'v', 'x'].includes(k)) q.push(k);
+        const first = !keys[k];
+        keys[k] = true;
+        if (first) {
+            if (['z', 'v', 'x'].includes(k)) {
+                // Press-once action. Local single-player + host queue locally; joiner sends only.
+                if (net.role !== 'join') q.push({ for: 'p1', k });
+                if (net.role === 'join') sendInput(k);
+            }
             if (k === 'escape' && G.run) showMenu();
             if (k === 'p' && G.run) G.paused = !G.paused;
         }
-        keys[k] = true;
+        // Joiner streams arrow keys continuously via inputTimer, but flag input changes for snappier prediction:
+        if (net.role === 'join') sendInput('');
         if (['arrowleft','arrowright','arrowup','arrowdown',' '].includes(e.key) ||
             ['w','a','s','d','z','v','x'].includes(k)) e.preventDefault();
     });
-    addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
+    addEventListener('keyup', e => {
+        keys[e.key.toLowerCase()] = false;
+        if (net.role === 'join') sendInput('');
+    });
 }
 
 function bindUI() {
     els.playBtn.onclick = startGame;
     els.controlsBtn.onclick = () => els.how.classList.toggle('show');
+    els.hostBtn.onclick = hostGame;
+    els.joinBtn.onclick = joinGame;
+    els.cancelHostBtn.onclick = showMenu;
     document.querySelectorAll('.diff').forEach(b => b.onclick = () => setDiff(b.dataset.d));
     els.msg.onclick = () => { if (G.over) showMenu(); };
     addEventListener('resize', () => {
@@ -1093,10 +1387,10 @@ function bindUI() {
 // ============================================================================
 
 initScene();
+renderCharacterPreviews();
 bindInput();
 bindUI();
 makeCards();
-// First-frame render so the menu has something behind it
 renderer.render(scene, camera);
 </script>
 </body>
